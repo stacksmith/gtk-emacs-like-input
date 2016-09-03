@@ -13,36 +13,44 @@
 
 (defun fun1 () (format t "fun1"))
 (defun fun2 () (format t "fun2"))
-(defun fun3 () (format t "fun3"))
+(defun fun3 (key)
+  (format t "fun3")
+  (if key
+      ()
+      #'fun3) ;install itself as interactive
+  )
 
 (defparameter *keymap-top* '(("top")))
 (bind "C-x C-c" #'app-quit)
 (bind "C-c" #'fun1)
 
 
+;;; For interactive commands, we must have access to the input buffer, as well
+;;; as act on tab for completion and return for execution...
+
+(defstruct eli label entry)
+
 (let ((eli-bar nil)
       (eli-static nil)
       (eli-editor nil)
 
       (binding (car *keymap-top*))
+      (interactive-function nil)
       )
   (defun input-reset ()
+    "reset input state and visuals"
     (setf binding (car *keymap-top*))
-    (gtk-label-set-text eli-static ""))
-  (defun on-key-press (widget event)
-    "Process a key from GTK; return key structure or nil for special keys"
-    (declare (ignore widget))
-    (let* ((gtkkey (gdk-event-key-keyval event))
-	   (key (make-key gtkkey (gdk-event-key-state event))))
-      (format t "...~A~%" gtkkey)
-      (unless (modifier-p gtkkey)	;skip modifier keypresses
-	(format t "key: ~A ~A ~A~%" gtkkey (gdk-event-key-state event)
-		(key-str key))
-	;;; Process C-g as global reset
-	(if (eq key #x1000067)
-	    (input-reset)
-	    (let* ((new-binding (binding-locate key binding))
-		   (name (key-str key)))
+    (gtk-label-set-text eli-static "")
+    (setf  (gtk-entry-text eli-editor) ""))
+
+  (defun input-reset-all ()
+    "reset input state and visual as well as interactive state"
+    (setf interactive-function nil)
+    (input-reset))
+  (defun input-keystroke (key)
+    (if interactive-function)
+    (let* ((new-binding (binding-locate key binding))
+	   (name (key-str key)))
 	      (format t "New binding: ~A ~A~%" key (type-of (cdr new-binding)))
 	      (if new-binding
 		  (typecase (cdr new-binding)
@@ -53,18 +61,26 @@
 		     (setf binding new-binding))
 		    (function
 		     (format t "FUNCTION ~A~%" (cdr new-binding))
-		     
-		     (funcall (cdr new-binding))
+		     ;; install interative if function pointer returned
+		     (setf interactive-function (funcall (cdr new-binding) nil))
 		     (format t "FUNCTION DONE~%")
-		     (input-reset)
-		     )
-		    )
+		     (input-reset)))
 		  (progn
 		    (format t "binding not found")
-		    (input-reset))))))
-      
-;      
-      )  
+		    (input-reset-all))))
+    )
+  (defun on-key-press (widget event)
+    "Process a key from GTK; return key structure or nil for special keys"
+    (declare (ignore widget))
+    (let* ((gtkkey (gdk-event-key-keyval event))
+	   (key (make-key gtkkey (gdk-event-key-state event))))
+      ;;(format t "...~A~%" gtkkey)
+      (unless (modifier-p gtkkey)	;skip modifier keypresses
+	;;(format t "key: ~A ~A ~A~%" gtkkey (gdk-event-key-state event)(key-str key))
+	;;; Process C-g as global reset
+	(if (eq key #x1000067)
+	    (input-reset-all)
+	    (input-keystroke key))))  
     t)
 
   (defun make-eli-bar ()
