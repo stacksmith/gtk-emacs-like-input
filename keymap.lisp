@@ -9,8 +9,6 @@
 ;;; "test" bound to some function.
 
 
-(defparameter *keymap-top* '(("top")))
-
 ;;; a sub-command is a string representation of a portion of a command description
 ;;; consisting of one of:
 ;;; - modifier character (one of CMASHh) followed by a -;
@@ -94,3 +92,8 @@ If not splittable, left part contains the entire string and right - nil."
 			  (assoc key binding :test #'equalp)))))
     (and (symbolp (cdr ass)) ;
 	 (cdr ass))))
+
+(defun binding-locate (key keymap)
+  "find a binding for key in keymap, or return nil.  The binding may be
+another keymap, or a function pointer"
+  (assoc key (cdr keymap) :test #'equalp))
