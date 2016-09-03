@@ -64,17 +64,9 @@ If not splittable, left part contains the entire string and right - nil."
     (values (subseq str 0 pos) ;
      (and pos (string-left-trim '(#\space) (subseq str (1+ pos)))))))
 
-;;; A command-sequence is a string containing multiple key-tuples, ending with
-;;; a string that represents a function
-(defun make-keymap (key)
-  (acons key nil nil))
 
-(defun fun1 () (format t "fun1"))
-(defun fun2 () (format t "fun2"))
-(defun fun3 () (format t "fun3"))
-
-(defun bind (command-string value)
-  (let ((ass (car *keymap-top*))
+(defun bind (command-string value &key (top *keymap-top*))
+  (let ((ass (car top))
 	(key nil))		   ;pretend the first one is an association...
     (loop for command in (split-seq command-string) do
 	 (setf key (parse-command command))
@@ -92,8 +84,8 @@ If not splittable, left part contains the entire string and right - nil."
     (setf (cdr ass) value)
     ))
 
-(defun find-binding (command-string)
-  (let ((ass (car *keymap-top*)))
+(defun find-binding (command-string &key (top *keymap-top*))
+  (let ((ass (car top)))
     (loop for command in (split-seq command-string) do
 	 (format t "Command ~A~%" command)
 	 (let ((key (parse-command command))
