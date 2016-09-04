@@ -41,6 +41,18 @@
 	       (when (logbitp mod-super-bit   key) "s-")
 	       (when (logbitp mod-hyper-bit   key) "H-")
 	       (gtkcode->gtkcode-name (key-val key))))
+;;; Associate chars used as modifiers in command-strings to modmasks
+;;; ah, defconstant reference in a quoted form seems to be a symbol, not value
+(defparameter *char-modmask* `((#\C . ,mod-control-mask)
+			       (#\M . ,mod-meta-mask)
+			       (#\A . ,mod-alt-mask)
+			       (#\S . ,mod-shift-mask)
+			       (#\s . ,mod-super-mask)
+			       (#\H . ,mod-hyper-mask)))
+(defun char->modmask (char)
+  "return a modmask for a character.  If not a mask character, error"
+  (or (cdr (assoc char *char-modmask*))
+      (signal 'kbd-parse-error :string (string char))))
 ;;;
 ;;; We only care about control and meta (alt key).
 ;;; Shift is already processed for us.
@@ -52,16 +64,7 @@
       (:mod1-mask    (incf val MOD-META-MASK))))
   val)
 
-(defun on-key-press (widget event)
-  "Process a key from GTK; return key structure or nil for special keys"
-  (declare (ignore widget))
-  (let ((gtkkey (gdk-event-key-keyval event)))
-    ;;    (format t "...~A~%" gtkkey)
-    (unless (modifier-p gtkkey)	;skip modifier keypresses
-      (format t "~A ~A ~A~%" gtkkey (gdk-event-key-state event)
-	      (key-str (make-key gtkkey (gdk-event-key-state event)))
-	      )))  
-  t)
+
 
 (defun keystroke-setup (widget)     ;; wiring
     (g-signal-connect widget "key-press-event" 'on-key-press)

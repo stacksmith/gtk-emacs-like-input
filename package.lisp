@@ -8,7 +8,8 @@
 	   :make-eli-bar
 	   :eli-def
 	   :eli-def-inter
-	   :*keymap-top*)
+	   :*keymap-top*
+	   :key->string)
   )
 
 

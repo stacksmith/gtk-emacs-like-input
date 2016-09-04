@@ -7,9 +7,12 @@
 ;;; entry    gtk-entry containing editable text on right;
 ;;; binding  binding currently in effect
 ;;; inter    interactive function installed or nil
-(defstruct eli label entry binding inter key)
+;;; key      last key invoking your handler or nil
+(defstruct eli label entry binding key inter)
 
-
+;;; An interactive function in installed in the inter field, and as of
+;;; the next keystroke, takes over the keyboard processing.  It may need
+;;; to construct or break down data....
 (defun app-quit (eli)
   (declare (ignore eli))
   (gtk-widget-destroy *window*)
@@ -48,46 +51,56 @@
   (eli-bind "C-c" #'fun4))
 
 (defun input-reset (eli)
-  "reset input state and visuals"
+  "reset input state and visuals.  Return t"
   (setf (eli-binding eli) (car *keymap-top*)
 	(gtk-entry-text (eli-entry eli)) "")
-  (gtk-label-set-text (eli-label eli) ""))
+  (gtk-label-set-text (eli-label eli) "")
+  t)
 
 (defun input-reset-all(eli)
-  "reset input state and visual as well as interactive state"
-  (setf (eli-inter eli) nil)
+  "reset input state and visual.  If in interactive, send it
+a notification to terminate.  Return t"
+  (let ((inter (shiftf (eli-inter eli) nil)))
+    (and old (funcall inter eli 2))) ;ask to terminate
   (input-reset eli))
 
 (defun label-append (eli text)
+  "In the label widget, append text to the existing text."
   (gtk-label-set-text
    (eli-label eli)
    (concatenate 'string (gtk-label-get-text (eli-label eli)) text)))
 
 
 (defun input-keystroke (eli)
-  (if (eli-inter eli)
-      (funcall (eli-inter eli) eli) ;returns nil to process keys in gtk
-      (let* ((key (eli-key eli))
-	     (new-binding (binding-locate key (eli-binding eli)))
-	     (name (key-str key)))
-	(format t "New binding: ~A ~A~%" key (type-of (cdr new-binding)))
-	(if new-binding
-	    (typecase (cdr new-binding)
-	      (cons
-	       (label-append eli name)
-	       (setf (eli-binding eli) new-binding)
-	       t)
-	      (function
-	       (format t "FUNCTION ~A~%" (cdr new-binding))
-	       (setf (eli-key eli) nil) ;interactive functions check this to install
-	       (funcall (cdr new-binding) eli)
-	       (format t "FUNCTION DONE~%")
-	       (input-reset eli)
-	       t))
-	    (progn
-	      (format t "binding not found")
-	      (input-reset-all eli)
-	      t)))))
+  ;;; Process C-g as global reset
+  (if (eq key #x1000067)
+      (input-reset-all eli) ; returns t! no further processing
+      (progn
+	(setf (eli-key eli) key)
+	(if (eli-inter eli)
+	    (funcall (eli-inter eli) eli 1) ;returns nil to process keys in gtk
+	    (let* ((key (eli-key eli))
+		   (new-binding (binding-locate key (eli-binding eli)))
+		   (name (key-str key)))
+	      (format t "New binding: ~A ~A~%" (cdr new-binding) (type-of (cdr new-binding)))
+	      (if new-binding
+		  (typecase (cdr new-binding)
+		    (cons ;it's another binding
+		     (label-append eli name)
+		     (setf (eli-binding eli) new-binding))
+		    (function ;it's a function
+		     (format t "FUNCTION ~A~%" (cdr new-binding))
+		     (setf (eli-key eli) nil) ;interactive functions check this to install
+		     (funcall (cdr new-binding) eli 0)
+		     (format t "FUNCTION DONE~%")
+		     (input-reset eli))
+		    (t (format t "ERROR: binding malformed")
+		       (input-reset-all eli)))
+		  (progn
+		    (format t "binding not found")
+		    (input-reset-all eli)))
+	      t ;in all above cases, we eat the keystroke.
+	      )))))
 
 (let ((eli (make-eli))
       (eli-bar nil))
@@ -95,23 +108,14 @@
   (defun on-key-press (widget event)
     "Process a key from GTK; return key structure or nil for special keys"
     (declare (ignore widget))
-    (format t "ON-KEY-PRESS")
-    (let* ((gtkkey (gdk-event-key-keyval event))
-	   (key (make-key gtkkey (gdk-event-key-state event))))
-      (format t "...~A~%" gtkkey)
-      (if (modifier-p gtkkey)	;skip modifier keypresses
-	  t
-	;;(format t "key: ~A ~A ~A~%" gtkkey (gdk-event-key-state event)(key-str key))
-	;;; Process C-g as global reset
-	  (if (eq key #x1000067)
-	      (progn
-		(input-reset-all eli)
-		t ;no further processing
-		)
-	      (progn
-		(setf (eli-key eli) key)
-		(input-keystroke eli) ;may process further
-		)))))
+;;;    (format t "ON-KEY-PRESS")
+    (let ((gtkkey (gdk-event-key-keyval event)))
+      (setf (eli-key eli)
+	    (make-key gtkkey (gdk-event-key-state event)))
+      ;(format t "...~A~%" gtkkey)
+      (or (modifier-p gtkkey)	;t if skiping modifier keypresses
+	  (input-keystroke eli) ;let them decide...
+	  )))
   
   (defun make-eli-bar ()
     (setf eli-bar (make-instance 'gtk-box :orientation :horizontal :vexpand nil)

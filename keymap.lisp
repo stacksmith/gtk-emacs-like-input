@@ -1,55 +1,74 @@
 (in-package :gtk-emacs-like-input)
 
-;;; Key bindings are stored in a tree of hashtables of keys and values.
-;;; key: a key with modifiers, or a string
+;;; Key bindings are stored in a tree of alists.
+;;; key: a key (possibly with modifiers), or a string
 ;;; value: another map or a symbol of function to execute (not nil!)
 ;;;
-;;; A full binding like "M-x C-Q test" corresponds to a keymap containing
-;;; M-x, which in turn contains another keymap containing C-Q, which has
-;;; "test" bound to some function.
+;;; A full binding like "M-x C-Q" corresponds to a keymap containing
+;;; M-x, which in turn contains another keymap containing C-Q
 
+(define-condition eli-error (error)
+  ((what
+    :initarg :message
+    :accessor eli-error-what
+    :initform nil
+    :documentation "What went wrong.")
+   (where
+    :initarg :message
+    :accessor eli-error-where
+    :initform nil
+    :documentation "Where it went wrong.")
+   (value
+    :initarg :value
+    :accessor eli-error-value
+    :initform nil
+    :documentation "The offending value.")))
+
+(defmethod print-object ((object eli-error) stream)
+  (print-unreadable-object (object stream :type t :identity t)
+    (format stream "ELI error in ~A: ~A, offending value [~A]~%"
+	    (eli-error-where object)
+	    (eli-error-what object)
+            (eli-error-value object))))
 
 ;;; a sub-command is a string representation of a portion of a command description
 ;;; consisting of one of:
 ;;; - modifier character (one of CMASHh) followed by a -;
 ;;; - a string containing a single character, converted into key
 ;;; - a string containing a character name, converted into key
-;;; - a string command used as a binding
+;;; 
 ;;; The parser returns a subseq after removing whatever it parsed.
+
 (defun parse-sub-command (string key)
   "parse emacs-command string at index updating key, returning 2 values"
-  (case (length string)
-    (1 (incf key (char-code (char string 0)));last char must be char
-       (setf string nil)) 
-    (t (if (eq #\- (char string 1)) ; command formed as "?-..."
-	   (progn ; attempt to set modifier
-	     (case (char string 0) ;dispatch on the letter preceding #\-
-	       (#\C (incf key mod-control-mask))
-	       (#\M (incf key mod-meta-mask))
-	       (#\A (incf key mod-alt-mask))
-	       (#\S (incf key mod-shift-mask))
-	       (#\s (incf key mod-super-mask))
-	       (#\H (incf key mod-hyper-mask))
-	       (t (signal 'kbd-parse-error :string string)))
-	     (setf string (subseq string 2)))
-	   (progn ; not a -, remainder must be convertible to a key
-	     (let ((result (gtkcode-name->gtkcode string)))
-	       (if result
-		   (incf key result) ; add keycode into result
-		   (if (zerop key)
-		       (setf key string)
-		       (signal 'kbd-parse-error :string string)
-		       )))
-	     (setf string nil)))))
+  (let ((first (char string 0)))
+    (case (length string)
+      (1 (incf key (char-code first));last char must be THE char
+	 (setf string nil)) ;nil signals completion 
+      (t (if (eq #\- (char string 1)) ; command formed as ".-."
+	     (progn ; attempt to set modifier
+	       (incf key (char->modmask first)) ;may raise
+	       (setf string (subseq string 2)))
+	     (progn ; not a -, remainder must be convertible to a key or string
+	       (let ((gtkcode (gtkcode-name->gtkcode string)))
+		 (if gtkcode
+		     (incf gtkcode )  ;add keycode into result
+		     (error 'eli-error
+			    :where "parse-sub-command"
+			    :what "String is not a key"
+			    :value string)))
+	       (setf string nil)))))) ;done parsing
   (values string key))
 
-;;; a command - a string representing exactly a keystroke with modifiers,
+;;; A command is a string with an emacs-like key description
 ;;; or a string representing some command
 ;;; possibly dividable into one or more sub-commands
 (defun parse-command (string)
   "parse emacs-command string, returning key"
   (let ((key 0))
-    (loop while string do
+    (loop while string
+	 while key
+       do
 	 ;(format t "Parse-command: a~A ~A ~%" string key)
 	 (multiple-value-setq (string key)
 	   (parse-sub-command string key)))
@@ -64,34 +83,52 @@ If not splittable, left part contains the entire string and right - nil."
 
 
 (defun eli-bind (command-string value &key (top *keymap-top*))
-  (let ((ass (car top))
-	(key nil))		   ;pretend the first one is an association...
-    (loop for command in (split-seq command-string) do
-	 (setf key (parse-command command))
-	 (let ((found (assoc key (cdr ass) :test #'equalp)))
-	   (format t "ass is ~A~%" ass)
-	   
-	   (if found
-	       (setf ass found)
-	       (let ((new-binding (acons key nil (cdr ass))))
-		 (format t "new binding is ~A~%" new-binding)
-		 (setf (cdr ass) new-binding)
-		 
-		 (setf ass (car new-binding)) ;so we can keep on going
-		 ))))
-    (setf (cdr ass) value)
-    ))
+  "traverse binding tree following command-string, creating the path as needed.
+Finally, set the found or new binding to value.  Error if a binding along the
+path is bound to a value; i.e. if 'M-x' is bound, 'M-x M-y' is not valid"
+  (loop for command in (split-seq command-string)
+     for key = (parse-command command)
+     with binding = (car top) ;get binding from alist
+     with found = nil
+     do
+       (if (setf found (assoc key (cdr binding) :test #'equalp))
+	   (setf binding found) ;subcommand found, set as curent binding
+	   (setf binding (car ;next time, binding is first of new alist
+			  (setf (cdr binding) (acons key nil (cdr binding))))))
+     finally (setf (cdr binding) value))) ;at the end, set dest of new binding.
+    
 
-(defun find-binding (command-string &key (top *keymap-top*))
-  (let ((ass (car top)))
-    (loop for command in (split-seq command-string) do
-	 (format t "Command ~A~%" command)
-	 (let ((key (parse-command command))
-	       (binding (cdr ass)))
-	   (setf ass (and (listp binding) ;must be a list
-			  (assoc key binding :test #'equalp)))))
-    (and (symbolp (cdr ass)) ;
-	 (cdr ass))))
+(defun find-bound (command-string &key (top *keymap-top*))
+  "traverse binding tree following command string, returning the final
+binding value or nil.  If :keymap requested, keymaps will also be returned"
+  (loop for command in (split-seq command-string)
+     for key = (parse-command command)
+     with binding = (car top)
+     do
+       (setf binding (assoc key (cdr binding) :test #'equalp))
+     finally (return (cdr binding))))
+
+(defun binding-name (binding)
+  "return a string representation of this binding"
+  (typecase (car binding)
+    (string (car binding))
+    (integer (key->string (car binding)))
+    (error 'eli-error
+	   :where "binding-name"
+	   :what "Invalid binding key"
+	   :value binding)
+    (otherwise (format nil "UNKNOWN ~A~%" binding))))
+
+(defun print-binding (&key (binding (car *keymap-top*)) (prefix ""))
+  ;; append name of binding to prefix
+  (let ((new-prefix (concatenate 'string prefix " " (binding-name binding))))
+    (typecase (cdr binding)
+      (cons
+       (loop for b in (cdr binding)
+	  do (print-binding :binding b :prefix new-prefix)))
+      (otherwise
+         (format t "~A ~A~%" new-prefix (cdr binding))))))
+
 
 (defun binding-locate (key keymap)
   "find a binding for key in keymap, or return nil.  The binding may be
