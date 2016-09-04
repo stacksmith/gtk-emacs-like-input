@@ -63,7 +63,7 @@ If not splittable, left part contains the entire string and right - nil."
      (and pos (string-left-trim '(#\space) (subseq str (1+ pos)))))))
 
 
-(defun bind (command-string value &key (top *keymap-top*))
+(defun eli-bind (command-string value &key (top *keymap-top*))
   (let ((ass (car top))
 	(key nil))		   ;pretend the first one is an association...
     (loop for command in (split-seq command-string) do

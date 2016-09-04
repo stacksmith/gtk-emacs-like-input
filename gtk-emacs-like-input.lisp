@@ -10,31 +10,42 @@
 (defstruct eli label entry binding inter key)
 
 
-(defun app-quit (eli key)
-  (declare (ignore eli key))
+(defun app-quit (eli)
+  (declare (ignore eli))
   (gtk-widget-destroy *window*)
   (format t "quit done~%")
 ;  (gtk-main-quit)
 ;  (g-signal-emit *window* "delete-event")
   )
 
-(defun fun1 (eli) (format t "fun1") t)
-(defun fun2 (eli) (format t "fun2") t)
+(defmacro eli-def-inter (name &body body)
+  `(defun ,name (eli)
+     (if (eli-key eli)
+	 (progn ,@body)
+	 (setf (eli-inter eli) #',name))))
+(defmacro eli-def (name &body body)
+  `(defun ,name (eli)
+     ,@body
+     t))
+
+(defun fun1 (eli) (format t "fun1") )
+(defun fun2 (eli) (format t "fun2") )
+
 (defun fun3 (eli)
   (format t "fun3")
   (if (eli-key eli) 
       nil
-      (progn
-	(setf (eli-inter eli) #'fun3) ;install itself as interactive
-	t))
-  
- )
+      (setf (eli-inter eli) #'fun3) ;install itself as interactive
+      ))
+
+(eli-def-inter fun4
+  (format t "OK")
+  nil)
 
 (defparameter *keymap-top* '(("top")))
-(bind "C-x C-c" #'app-quit)
-(bind "C-c" #'fun1)
-
-
+(defun bind-keys ()
+  (eli-bind "C-x C-c" #'app-quit)
+  (eli-bind "C-c" #'fun4))
 
 (defun input-reset (eli)
   "reset input state and visuals"
@@ -77,15 +88,17 @@
 	      (format t "binding not found")
 	      (input-reset-all eli)
 	      t)))))
+
 (let ((eli (make-eli))
       (eli-bar nil))
   
   (defun on-key-press (widget event)
     "Process a key from GTK; return key structure or nil for special keys"
     (declare (ignore widget))
+    (format t "ON-KEY-PRESS")
     (let* ((gtkkey (gdk-event-key-keyval event))
 	   (key (make-key gtkkey (gdk-event-key-state event))))
-      ;;(format t "...~A~%" gtkkey)
+      (format t "...~A~%" gtkkey)
       (if (modifier-p gtkkey)	;skip modifier keypresses
 	  t
 	;;(format t "key: ~A ~A ~A~%" gtkkey (gdk-event-key-state event)(key-str key))
@@ -107,8 +120,8 @@
 	  (eli-entry eli) (make-instance 'gtk-entry :label "edit"))
     (gtk-box-pack-start  eli-bar (eli-label eli) :expand nil)
     (gtk-box-pack-end eli-bar (eli-entry eli))
-    (g-signal-connect (eli-entry eli) "key-press-event" 'on-key-press)
     (input-reset-all eli)
+
     eli-bar))
 
 
@@ -131,7 +144,7 @@
       (gtk-box-pack-end workspace eli-bar :expand nil)
       (gtk-container-add *window* workspace)
       )
-      
+      (bind-keys)
 
     (g-signal-connect *window* "destroy"
 		      (lambda (widget)

@@ -4,14 +4,12 @@
   (:nicknames :eli)
   (:use :gtk :gdk :gdk-pixbuf :gobject
         :glib :gio :pango :cairo :cffi :common-lisp :cl)
-  ;(:export :...)
+  (:export :eli-bind
+	   :make-eli-bar
+	   :eli-def
+	   :eli-def-inter
+	   :*keymap-top*)
   )
 
 
-;;;; package.lisp
-
-(defpackage #:cl-fm
- (:use :gtk :gdk :gdk-pixbuf :gobject
-       :glib :gio :pango :cairo :cffi :common-lisp :cl)
- )
 
