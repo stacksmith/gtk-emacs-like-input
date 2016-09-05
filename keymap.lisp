@@ -82,42 +82,43 @@ If not splittable, left part contains the entire string and right - nil."
      (and pos (string-left-trim '(#\space) (subseq str (1+ pos)))))))
 
 
-(defun eli-bind (command-string value &key (top *keymap-top*))
+(defun bind (command-string value &key (top *keymap-top*))
   "traverse binding tree following command-string, creating the path as needed.
 Finally, set the found or new binding to value.  Error if a binding along the
 path is bound to a value; i.e. if 'M-x' is bound, 'M-x M-y' is not valid"
+  (unless (symbolp value)
+    (error 'eli-error :where "bind" :what "Attempted to bind a non-symbol"
+	   :value value))
   (loop for command in (split-seq command-string)
      for key = (parse-command command)
      with binding = (car top) ;get binding from alist
      with found = nil
      do
-       (if (setf found (assoc key (cdr binding) :test #'equalp))
+       (if (setf found (assoc key (cdr binding)))
 	   (setf binding found) ;subcommand found, set as curent binding
 	   (setf binding (car ;next time, binding is first of new alist
 			  (setf (cdr binding) (acons key nil (cdr binding))))))
      finally (setf (cdr binding) value))) ;at the end, set dest of new binding.
     
 
-(defun find-bound (command-string &key (top *keymap-top*))
+(defun binding-of (command-string &key (top *keymap-top*))
   "traverse binding tree following command string, returning the final
 binding value or nil.  If :keymap requested, keymaps will also be returned"
   (loop for command in (split-seq command-string)
      for key = (parse-command command)
      with binding = (car top)
      do
-       (setf binding (assoc key (cdr binding) :test #'equalp))
+       (setf binding (assoc key (cdr binding)))
      finally (return (cdr binding))))
 
 (defun binding-name (binding)
   "return a string representation of this binding"
   (typecase (car binding)
-    (string (car binding))
     (integer (key->string (car binding)))
-    (error 'eli-error
-	   :where "binding-name"
-	   :what "Invalid binding key"
-	   :value binding)
-    (otherwise (format nil "UNKNOWN ~A~%" binding))))
+    (otherwise (error 'eli-error
+		      :where "binding-name"
+		      :what "Invalid binding key"
+		      :value (car binding)))))
 
 (defun print-binding (&key (binding (car *keymap-top*)) (prefix ""))
   ;; append name of binding to prefix
@@ -133,4 +134,4 @@ binding value or nil.  If :keymap requested, keymaps will also be returned"
 (defun binding-locate (key keymap)
   "find a binding for key in keymap, or return nil.  The binding may be
 another keymap, or a function pointer"
-  (assoc key (cdr keymap) :test #'equalp))
+  (assoc key (cdr keymap)))
