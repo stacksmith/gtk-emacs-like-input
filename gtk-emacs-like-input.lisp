@@ -18,6 +18,7 @@
 
 (defparameter *keymap-top* nil)
 (defparameter *keymap-instant* nil)
+
 (defun buffer->string (buffer)
   "convert a vector of keys into its string representation"
   (with-output-to-string (s)
@@ -127,7 +128,6 @@
     (gtk-box-pack-start    bar left :expand nil)
     (gtk-box-pack-start    bar middle :expand t)
     (gtk-box-pack-start    bar entry :expand t)
-    
     (gtk-box-pack-start    bar right :expand nil)
     (reset :full t)
     
