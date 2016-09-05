@@ -38,11 +38,12 @@
      label
      (concatenate 'string (gtk-label-get-text label) text)))
 
-  (defun render ())
+  (defun render ()
+    )
   
   (defun reset (&key (full nil))
-    "reset input state and visuals.  Return t"
-    (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
+    "reset input state and visuals."
+    ( setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
 	  (gtk-entry-text entry) "")
     (trace)
     (gtk-label-set-text label "")
