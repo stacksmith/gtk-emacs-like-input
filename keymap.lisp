@@ -52,7 +52,7 @@
 	     (progn ; not a -, remainder must be convertible to a key or string
 	       (let ((gtkcode (gtkcode-name->gtkcode string)))
 		 (if gtkcode
-		     (incf gtkcode )  ;add keycode into result
+		     (incf key gtkcode)  ;add keycode into result
 		     (error 'eli-error
 			    :where "parse-sub-command"
 			    :what "String is not a key"

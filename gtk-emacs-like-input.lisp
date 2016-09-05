@@ -21,8 +21,10 @@
 (let ((bar nil)      ;eli bar
       (label nil)    ;static label
       (entry nil)    ;text entry
-
+      
       (binding nil)  ;current binding as eli walks keymaps
+      (bindings nil) ;stack of bindings as we add them...
+      
       (key nil)      ;key currently in effect
       (interactive nil) ;function pointer to installed interactive function
       )
@@ -34,8 +36,9 @@
      (concatenate 'string (gtk-label-get-text label) text)))
   
   (defun reset (&key (full nil))
-  "reset input state and visuals.  Return t"
+    "reset input state and visuals.  Return t"
     (setf binding (car *keymap-top*)
+	  bindings (car *keymap-top*)
 	  (gtk-entry-text entry) "")
     (gtk-label-set-text label "")
     (when full ; reset interactive stuff
@@ -43,38 +46,44 @@
 	   (funcall interactive 2))
 	(setf interactive nil))
     t)
+  (defun back-up ()
+    (format t "BACKING UP ~A~%" bindings)
+    (pop bindings)
+    )
   
   (defun input-keystroke ()
     "process a keystroke."
-    (if (eq key #x1000067) ;C-g is global reset
-	(reset :full t) ; returns t! reset and uninstall interactive fun
-	(if interactive
-	    (funcall interactive 1) ;returns nil to process keys in gtk
-	    ;; set binding to whatever we find for the key, and extract
-	    ;; the bound value.
-	    (let* ((new-binding (binding-locate key binding))
-		   (bound-value (cdr new-binding)))
-	      (typecase bound-value ;dispatch on bound value's type
-		(null ())
-		(cons		     ;it's another binding
-		 (setf binding new-binding)
-		 (label-append (key->string key))) ;display it in label
-		(symbol
-		 (if (get bound-value 'interactive) ;if interactive function,
-		     (funcall (setf interactive (symbol-function bound-value)) 0)
-		     (funcall (symbol-function bound-value)))) ;non-interactive...
-		(t ;any other type is not allowed.
-		 (error 'eli-error :where "input-keystroke" :what "binding malformed"
-			:value binding)))
-	      t))))
+    (case key
+      (#x1000067 (reset :full t)) ; returns t! reset and uninstall interactive fun)
+      (#x100FF08 (back-up) t)
+      (t (if interactive
+	(funcall interactive 1) ;returns nil to process keys in gtk
+	;; set binding to whatever we find for the key, and extract
+	;; the bound value
+	(let* ((new-binding (binding-locate key binding))
+	       (bound-value (cdr new-binding)))
+	  (typecase bound-value ;dispatch on bound value's type
+	    (null ())
+	    (cons		     ;it's another binding
+	     (setf binding new-binding)
+	     (push new-binding bindings)
+	     (label-append (key->string key))) ;display it in label
+	    (symbol
+	     (if (get bound-value 'interactive) ;if interactive function,
+		 (funcall (setf interactive (symbol-function bound-value)) 0)
+		 (funcall (symbol-function bound-value)))) ;non-interactive...
+	    (t ;any other type is not allowed.
+	     (error 'eli-error :where "input-keystroke" :what "binding malformed"
+		    :value binding)))
+	  t)))))
   
 
   (defun on-key-press (widget event)
     "Process a key from GTK; return key structure or nil for special keys"
     (declare (ignore widget))
-    ;(format t "ON-KEY-PRESS")
     (let ((gtkkey (gdk-event-key-keyval event)))
       (setf key (make-key gtkkey (gdk-event-key-state event)))
+     ;;; (format t "ON-KEY-PRESS ~A~%" key)
       (or (modifier-p gtkkey) ;do not process modifiers, gtk will handle them
 	  (input-keystroke) ;let them decide if to continue with key process
 	  )))
@@ -86,8 +95,7 @@
     (gtk-box-pack-start  bar label :expand nil)
     (gtk-box-pack-end    bar entry)
     (reset :full t)
-    bar
-    ))
+    bar))
 
 (defparameter *window* nil)
 (defun app-quit ()
@@ -106,7 +114,9 @@
 )
 (setf (get 'fun3 'interactive) t)
 (defun bind-keys ()
+  (setf *keymap-top* '(("")))
   (bind "C-x C-c" 'app-quit)
+  (bind "C-BS" 'backup)
   (bind "C-a" 'fun1)
   (bind "C-b" 'fun2)
   (bind "C-c" 'fun3))
