@@ -31,16 +31,21 @@
   (and (<  (key-val key) char-code-limit)
        (code-char (key-val key))))
 
+(defun write-key (key stream)
+  "print the stringified key to stream"
+  (when (logbitp mod-control-bit key) (write-sequence "C-" stream ))
+  (when (logbitp mod-meta-bit    key) (write-sequence "M-" stream ))
+  (when (logbitp mod-alt-bit     key) (write-sequence "A-" stream ))
+  (when (logbitp mod-shift-bit   key) (write-sequence "S-" stream ))
+  (when (logbitp mod-super-bit   key) (write-sequence "s-" stream ))
+  (when (logbitp mod-hyper-bit   key) (write-sequence "H-" stream ))
+  (write-sequence (gtkcode->gtkcode-name (key-val key)) stream)
+  key)
+
 (defun key->string (key)
   "Convert a key into a string representation"
-    (concatenate 'string
-	       (when (logbitp mod-control-bit key) "C-")
-	       (when (logbitp mod-meta-bit    key) "M-")
-	       (when (logbitp mod-alt-bit     key) "A-")
-	       (when (logbitp mod-shift-bit   key) "S-")
-	       (when (logbitp mod-super-bit   key) "s-")
-	       (when (logbitp mod-hyper-bit   key) "H-")
-	       (gtkcode->gtkcode-name (key-val key))))
+  (with-output-to-string (s) (write-key key s)))
+
 ;;; Associate chars used as modifiers in command-strings to modmasks
 ;;; ah, defconstant reference in a quoted form seems to be a symbol, not value
 (defparameter *char-modmask* `((#\C . ,mod-control-mask)
@@ -52,7 +57,8 @@
 (defun char->modmask (char)
   "return a modmask for a character.  If not a mask character, error"
   (or (cdr (assoc char *char-modmask*))
-      (signal 'kbd-parse-error :string (string char))))
+      (error 'eli-error :message "char->modmask: char is not a mask-appropriage"
+	      :value char)))
 ;;;
 ;;; We only care about control and meta (alt key).
 ;;; Shift is already processed for us.
