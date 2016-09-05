@@ -4,12 +4,16 @@
   (:nicknames :eli)
   (:use :gtk :gdk :gdk-pixbuf :gobject
         :glib :gio :pango :cairo :cffi :common-lisp :cl)
-  (:export :eli-bind
-	   :make-eli-bar
-	   :eli-def
-	   :eli-def-inter
+  (:export :eli-error 
+	   :bind
+	   :binding-of
+	   :binding-name
+	   :binding-print
+	   :binding-locate
+	   :make-bar
+	   :set-interactive
 	   :*keymap-top*
-	   :key->string)
+	   :on-key-press)
   )
 
 

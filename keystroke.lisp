@@ -31,7 +31,7 @@
   (and (<  (key-val key) char-code-limit)
        (code-char (key-val key))))
 
-(defun key-str (key)
+(defun key->string (key)
   "Convert a key into a string representation"
     (concatenate 'string
 	       (when (logbitp mod-control-bit key) "C-")

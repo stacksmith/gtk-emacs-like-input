@@ -120,18 +120,19 @@ binding value or nil.  If :keymap requested, keymaps will also be returned"
 		      :what "Invalid binding key"
 		      :value (car binding)))))
 
-(defun print-binding (&key (binding (car *keymap-top*)) (prefix ""))
-  ;; append name of binding to prefix
+(defun binding-print (&key (binding (car *keymap-top*)) (prefix ""))
+  "print the binding and sub-bindings"
   (let ((new-prefix (concatenate 'string prefix " " (binding-name binding))))
     (typecase (cdr binding)
       (cons
        (loop for b in (cdr binding)
-	  do (print-binding :binding b :prefix new-prefix)))
+	  do (binding-print :binding b :prefix new-prefix)))
       (otherwise
          (format t "~A ~A~%" new-prefix (cdr binding))))))
 
 
 (defun binding-locate (key keymap)
   "find a binding for key in keymap, or return nil.  The binding may be
-another keymap, or a function pointer"
+another keymap, or a function symbol"
   (assoc key (cdr keymap)))
+

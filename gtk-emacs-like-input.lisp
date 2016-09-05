@@ -1,7 +1,6 @@
 ;;;; gtk-emacs-like-input.lisp
 
 (in-package #:gtk-emacs-like-input)
-(defparameter *window* nil)
 ;;; The key to using eli is the eli structure.
 ;;; label    gtk-label containing static text on left;
 ;;; entry    gtk-entry containing editable text on right;
@@ -11,45 +10,13 @@
 ;;; An interactive function in installed in the inter field, and as of
 ;;; the next keystroke, takes over the keyboard processing.  It may need
 ;;; to construct or break down data....
-(defun app-quit ()
-  (gtk-widget-destroy *window*)
-  (format t "quit done~%")
-;  (gtk-main-quit)
-;  (g-signal-emit *window* "delete-event")
-  )
-
-(defmacro eli-def-inter (name &body body)
-  `(defun ,name (eli)
-     (if (eli-key eli)
-	 (progn ,@body)
-	 (setf (eli-inter eli) #',name))))
-(defmacro eli-def (name &body body)
-  `(defun ,name (eli)
-     ,@body
-     t))
-
-(defun fun1 () (format t "fun1") )
-(defun fun2 () (format t "fun2") )
-
-(defun fun3 (stage)
-  (case stage
-    (0 (format t "fun3: 0"))
-    (1 (format t "fun3: 1"))
-    (2 (format t "fun3: 2")))
-)
-(setf (get 'fun3 'interactive) t)
 
 
-(defparameter *keymap-top* '(("top")))
-(defun bind-keys ()
-  (bind "C-x C-c" 'app-quit)
-  (bind "C-a" 'fun1)
-  (bind "C-b" 'fun2)
-  (bind "C-c" 'fun3))
+(defun set-interactive (symbol &optional (value t))
+  "set symbol's interactive status to value"
+  (setf (get symbol 'interactive) value))
 
-
-
-
+(defparameter *keymap-top* '(("")))
 
 (let ((bar nil)      ;eli bar
       (label nil)    ;static label
@@ -87,14 +54,12 @@
 	    ;; the bound value.
 	    (let* ((new-binding (binding-locate key binding))
 		   (bound-value (cdr new-binding)))
-	      (format t "new-binding ~A~%" new-binding)
 	      (typecase bound-value ;dispatch on bound value's type
 		(null ())
 		(cons		     ;it's another binding
 		 (setf binding new-binding)
 		 (label-append (key->string key))) ;display it in label
 		(symbol
-		 (format t "FUNCTION ~A~%" bound-value)
 		 (if (get bound-value 'interactive) ;if interactive function,
 		     (funcall (setf interactive (symbol-function bound-value)) 0)
 		     (funcall (symbol-function bound-value)))) ;non-interactive...
@@ -124,8 +89,28 @@
     bar
     ))
 
+(defparameter *window* nil)
+(defun app-quit ()
+  (gtk-widget-destroy *window*)
+  (format t "quit done~%")
+;  (gtk-main-quit)
+;  (g-signal-emit *window* "delete-event")
+  )
+(defun fun1 () (format t "fun1") )
+(defun fun2 () (format t "fun2") )
+(defun fun3 (stage)
+  (case stage
+    (0 (format t "fun3: 0") t)
+    (1 (format t "fun3: 1") nil)
+    (2 (format t "fun3: 2") t))
+)
+(setf (get 'fun3 'interactive) t)
+(defun bind-keys ()
+  (bind "C-x C-c" 'app-quit)
+  (bind "C-a" 'fun1)
+  (bind "C-b" 'fun2)
+  (bind "C-c" 'fun3))
 (defun  test (&key (stdout *standard-output*))
-  
   (within-main-loop
     (setf *standard-output* stdout) ;enable output in this thread
     (setf *window* (make-instance 'gtk-window
