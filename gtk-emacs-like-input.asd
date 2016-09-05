@@ -7,6 +7,7 @@
   :depends-on (#:cl-cffi-gtk)
   :serial t
   :components ((:file "package")
+	       (:file "conditions")
 	       (:file "util")
 	       (:file "keysyms")
 	       (:file "keystroke")

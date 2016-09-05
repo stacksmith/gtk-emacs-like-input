@@ -27,7 +27,9 @@
 
 (defun gtkcode->gtkcode-name (gtkcode)
   "Return the name corresponding to GTKCODE or nil"
-  (gethash gtkcode *gtkcode-name-map*))
+  (let ((name (gethash gtkcode *gtkcode-name-map*)))
+    (or name
+	(error 'eli-error :message "gtkcode is not known"))))
 
 ;;OK, I will rip out X11/GTK gtkcodes and name a few the Emacs way...
 (define-gtkcode #xff0d "Return")  ;Return, enter
