@@ -24,29 +24,36 @@
     (loop for key across buffer do (write-key key s ))))
 
 (let ((bar nil)      ;eli bar
-      (label nil)    ;static label
-      (entry nil)    ;text entry
+      (left nil)    ;static label
+      (middle nil)    ;
+      (entry nil)
+      (right nil)   ;status label
 
       (buffer nil)   ;collect keys
       (key nil)      ;key currently in effect
       (interactive nil) ;function pointer to installed interactive function
       )
 
-  (defun label-append (text)
-    "In the label widget, append text to the existing text."
-    (gtk-label-set-text
-     label
-     (concatenate 'string (gtk-label-get-text label) text)))
 
   (defun render ()
+    (let* ((keystr(buffer->string buffer) )
+	   (match (keymap-match *keymap-top* keystr)))
+      (gtk-label-set-text left keystr)
+      (gtk-label-set-text middle "")
+;      (setf (gtk-entry-text middle) "")
+      (gtk-label-set-text right(format nil "~A matches" (length match))))
+    
     )
   
   (defun reset (&key (full nil))
     "reset input state and visuals."
-    ( setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
+    (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
 	  (gtk-entry-text entry) "")
     (trace)
-    (gtk-label-set-text label "")
+
+    (gtk-label-set-text left "")
+    (gtk-label-set-text middle "")
+    (gtk-label-set-text right "")
     (when full ; reset interactive stuff
       (and interactive
 	   (funcall interactive 2))
@@ -68,6 +75,7 @@
 	   (funcall interactive 1) ;returns nil/t to process keys in gtk
 	   (progn
 	     (vector-push-extend key buffer) ;append key
+	     (render)
 	     (format t "buffer string ~A~%" (buffer->string buffer))
 	     (let ((match (keymap-match *keymap-top* (buffer->string buffer))))
 	       (format t "~A matches~%" match)
@@ -95,11 +103,14 @@
 	  )))
     
     (defun make-bar ()
-      (setf bar (make-instance 'gtk-box :orientation :horizontal :vexpand nil)
-	    label (make-instance 'gtk-label :label "test"   :expand nil)
-	    entry (make-instance 'gtk-entry :label "edit"))
-      (gtk-box-pack-start  bar label :expand nil)
-      (gtk-box-pack-end    bar entry)
+      (setf bar (make-instance 'gtk-box :orientation :horizontal )
+	    left (make-instance 'gtk-label :label "left"  )
+	    middle (make-instance 'gtk-label :label "middle" )
+	    entry (make-instance 'gtk-entry :label "entry" :hidden t )
+	    right (make-instance 'gtk-label :label "right" ))
+      (gtk-box-pack-start    bar left :expand nil)
+      (gtk-box-pack-start    bar middle :expand t)
+      (gtk-box-pack-start    bar right :expand nil)
       (reset :full t)
       bar))
 
