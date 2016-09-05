@@ -16,34 +16,34 @@
   "set symbol's interactive status to value"
   (setf (get symbol 'interactive) value))
 
-(defparameter *keymap-top* '(("")))
-
+(defparameter *keymap-top* nil)
+(defparameter *keymap-instant* nil)
 (defun buffer->string (buffer)
   "convert a vector of keys into its string representation"
   (with-output-to-string (s)
     (loop for key across buffer do (write-key key s ))))
 
 (let ((bar nil)      ;eli bar
-      (left nil)    ;static label
-      (middle nil)    ;
+      (left nil)     ;left - shows entered keys
+      (middle nil)   ;
       (entry nil)
-      (right nil)   ;status label
+      (right nil)    ;right - status info
 
       (buffer nil)   ;collect keys
       (key nil)      ;key currently in effect
       (interactive nil) ;function pointer to installed interactive function
       )
 
-
-  (defun render ()
-    (let* ((keystr(buffer->string buffer) )
-	   (match (keymap-match *keymap-top* keystr)))
+  (defun render (&key (match nil))
+    (let ((keystr(buffer->string buffer) ))
+      (unless match
+	(unless (zerop keystr)
+	  (setf match (keymap-match *keymap-top* keystr))))
       (gtk-label-set-text left keystr)
       (gtk-label-set-text middle "")
-;      (setf (gtk-entry-text middle) "")
-      (gtk-label-set-text right(format nil "~A matches" (length match))))
-    
-    )
+					;      (setf (gtk-entry-text middle) "")
+      (and (listp match)	;could be symbol
+	   (gtk-label-set-text right(format nil "~A matches" (length match))))))
   
   (defun reset (&key (full nil))
     "reset input state and visuals."
@@ -60,37 +60,42 @@
 	(setf interactive nil))
     t)
   
-  (defun back-up ()
-    (format t "BACKING UP ~A~%" 1 )
+
+;;; Instant commands
+  (defun cmd-cancel ()
+    (reset :full t))
+
+  (defun cmd-back-up ()
     (unless (zerop (length buffer))
-      (vector-pop buffer)))
+      (vector-pop buffer)
+      (render)))
   
+  (defun dispatch-match (match)
+    (typecase match
+      (function
+       (funcall match) ;non-interactive function or lambda
+       (reset))
+      (symbol
+       (if (get match 'interactive)
+	   (progn ;install interactive and initialize it
+	     (funcall (setf interactive (symbol-function match)) 0))
+	   (progn ;call function and reset
+	     (funcall (symbol-function match))
+	     (reset)))))
+    )
   (defun input-keystroke ()
     "process a keystroke."
-    (case key
-      (#x1000067 (reset :full t)) ; returns t! reset and uninstall interactive fun)
-      (#x100FF08 (back-up) t)
-      (t
-       (if interactive
-	   (funcall interactive 1) ;returns nil/t to process keys in gtk
-	   (progn
-	     (vector-push-extend key buffer) ;append key
-	     (render)
-	     (format t "buffer string ~A~%" (buffer->string buffer))
-	     (let ((match (keymap-match *keymap-top* (buffer->string buffer))))
-	       (format t "~A matches~%" match)
-	       (typecase match
-		 (list (format t "~A possibilities: ~A~%" (length match) match))
-		 (symbol
-		  (if (get match 'interactive)
-		      (progn ;install interactive and initialize it
-			(funcall (setf interactive (symbol-function match)) 0))
-		      (progn ;call function and reset
-			(funcall (symbol-function match))
-			(reset))))
-		 ;;otherwise, unbound key - let the user back out
-		 ))
-	     t)))))
+      (let ((match (keymap-instant-match *keymap-instant* (key->string key))))
+	(if match
+	    (funcall (symbol-function match)) ;
+	    (if interactive
+		(funcall interactive 1) ;returns nil/t to process keys in gtk
+		(progn
+		  (vector-push-extend key buffer) ;append key
+		  (let ((match (keymap-match *keymap-top* (buffer->string buffer))))
+		    (render :match match)
+		    (unless (listp match) (dispatch-match match)))
+		t)))))
   
     (defun on-key-press (widget event)
     "Process a key from GTK; return key structure or nil for special keys"
@@ -135,7 +140,12 @@
   (bind *keymap-top* "C-xC-c" 'app-quit)
   (bind *keymap-top* "C-a" 'fun1)
   (bind *keymap-top* "C-b" 'fun2)
-  (bind *keymap-top* "C-c" 'fun3))
+  (bind *keymap-top* "C-c" 'fun3)
+
+  (setf *keymap-instant* (new-keymap))
+  (bind *keymap-instant* "C-g" 'cmd-cancel)
+  (bind *keymap-instant* "BS" 'cmd-back-up)
+  )
 (defun  test (&key (stdout *standard-output*))
   (within-main-loop
     (setf *standard-output* stdout) ;enable output in this thread
