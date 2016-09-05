@@ -20,10 +20,8 @@
 
 (defun buffer->string (buffer)
   "convert a vector of keys into its string representation"
-  (loop for key across buffer
-       with result = ""
-     do (setf result (concatenate (key->string key)))
-     finally (return result)))
+  (with-output-to-string (s)
+    (loop for key across buffer do (write-key key s ))))
 
 (let ((bar nil)      ;eli bar
       (label nil)    ;static label
@@ -39,10 +37,11 @@
     (gtk-label-set-text
      label
      (concatenate 'string (gtk-label-get-text label) text)))
+
+  (defun render ())
   
   (defun reset (&key (full nil))
     "reset input state and visuals.  Return t"
-    (format t "1~%")
     (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
 	  (gtk-entry-text entry) "")
     (trace)
@@ -55,7 +54,8 @@
   
   (defun back-up ()
     (format t "BACKING UP ~A~%" 1 )
-     )
+    (unless (zerop (length buffer))
+      (vector-pop buffer)))
   
   (defun input-keystroke ()
     "process a keystroke."
@@ -64,22 +64,26 @@
       (#x100FF08 (back-up) t)
       (t
        (if interactive
-	   (funcall interactive 1) ;returns nil to process keys in gtk
+	   (funcall interactive 1) ;returns nil/t to process keys in gtk
 	   (progn
 	     (vector-push-extend key buffer) ;append key
-	     (format t "key ~A" key)
-	     (let ((indices (indices-of *keymap-top* (buffer->string buffer))))
-	       (format t "~A matches~%" indices)
-	       (when (= 1 (length indices))
-		 (let ((bound-value (keymap-symbol-at *keymap-top* (car indices) )))
-		   (if (get bound-value 'interactive) ;if interactive function,
-		       (funcall (setf interactive (symbol-function bound-value)) 0)
-		       (funcall (symbol-function bound-value))))))
-	     
+	     (format t "buffer string ~A~%" (buffer->string buffer))
+	     (let ((match (keymap-match *keymap-top* (buffer->string buffer))))
+	       (format t "~A matches~%" match)
+	       (typecase match
+		 (list (format t "~A possibilities: ~A~%" (length match) match))
+		 (symbol
+		  (if (get match 'interactive)
+		      (progn ;install interactive and initialize it
+			(funcall (setf interactive (symbol-function match)) 0))
+		      (progn ;call function and reset
+			(funcall (symbol-function match))
+			(reset))))
+		 ;;otherwise, unbound key - let the user back out
+		 ))
 	     t)))))
   
-
-  (defun on-key-press (widget event)
+    (defun on-key-press (widget event)
     "Process a key from GTK; return key structure or nil for special keys"
     (declare (ignore widget))
     (let ((gtkkey (gdk-event-key-keyval event)))
@@ -88,15 +92,15 @@
       (or (modifier-p gtkkey) ;do not process modifiers, gtk will handle them
 	  (input-keystroke) ;let them decide if to continue with key process
 	  )))
-  
-  (defun make-bar ()
-    (setf bar (make-instance 'gtk-box :orientation :horizontal :vexpand nil)
-	  label (make-instance 'gtk-label :label "test"   :expand nil)
-	  entry (make-instance 'gtk-entry :label "edit"))
-    (gtk-box-pack-start  bar label :expand nil)
-    (gtk-box-pack-end    bar entry)
-    (reset :full t)
-    bar))
+    
+    (defun make-bar ()
+      (setf bar (make-instance 'gtk-box :orientation :horizontal :vexpand nil)
+	    label (make-instance 'gtk-label :label "test"   :expand nil)
+	    entry (make-instance 'gtk-entry :label "edit"))
+      (gtk-box-pack-start  bar label :expand nil)
+      (gtk-box-pack-end    bar entry)
+      (reset :full t)
+      bar))
 
 (defparameter *window* nil)
 (defun app-quit ()
@@ -116,8 +120,7 @@
 (setf (get 'fun3 'interactive) t)
 (defun bind-keys ()
   (setf *keymap-top* (new-keymap))
-  (bind *keymap-top* "C-x C-c" 'app-quit)
-  (bind *keymap-top* "C-BS" 'backup)
+  (bind *keymap-top* "C-xC-c" 'app-quit)
   (bind *keymap-top* "C-a" 'fun1)
   (bind *keymap-top* "C-b" 'fun2)
   (bind *keymap-top* "C-c" 'fun3))

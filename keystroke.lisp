@@ -40,6 +40,7 @@
   (when (logbitp mod-super-bit   key) (write-sequence "s-" stream ))
   (when (logbitp mod-hyper-bit   key) (write-sequence "H-" stream ))
   (write-sequence (gtkcode->gtkcode-name (key-val key)) stream)
+  ;(unless (zerop (key-mod key)) (write-char #\space stream))
   key)
 
 (defun key->string (key)
