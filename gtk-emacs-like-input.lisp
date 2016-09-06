@@ -143,14 +143,14 @@ processing"
   "Process a key from GTK; return key structure or nil for special keys"
   (let ((eli (gethash widget eli-map))
 	(gtkkey (gdk-event-key-keyval event)))
-    (with-slots (key instance) eli
+    (with-slots (key ) eli
       (setf key (make-key gtkkey (gdk-event-key-state event)))
-      (format t "ON-KEY-PRESS INSTANCE ~A ~A~%" instance key)
       (or (modifier-p gtkkey) ;do not process modifiers, gtk will handle them
 	  (input-keystroke eli) ;let them decide if to continue with key process
 	  ))))
  
 (defun make-bar (window)
+  "Create an eli command bar; return eli"
   (let ((eli (make-eli)))
     (with-slots (bar left middle entry right) eli
       (unless eli-map
@@ -166,8 +166,7 @@ processing"
       (gtk-box-pack-start    bar left :expand nil)
       (gtk-box-pack-start    bar middle :expand t)
       (gtk-box-pack-start    bar entry :expand t)
-      (gtk-box-pack-start    bar right :expand nil)
-      (format t "BAR: ~A ~A ~%" window eli))
+      (gtk-box-pack-start    bar right :expand nil))
     eli))
 
 ;;; Some helper functions that can be bound
@@ -186,8 +185,6 @@ processing"
 	(render eli))
       t)))
 
-
-
 (defun fun1 (eli) (format t "fun1~%")
        (reset eli))
 (defun fun2 (eli) (format t "fun2~%")
@@ -197,7 +194,7 @@ processing"
     (:initialize
        (use-entry eli t) 1)
     (:process
-     (format t "fun3: 1 instance ~A~%" (eli-key) )
+     (format t "fun3: 1 instance ~A~%" (eli-key eli) )
      nil ;let gtk work with the entry editor...
      )
     (:finalize
@@ -206,9 +203,8 @@ processing"
      t))
   )
 (defun quit (eli)
-  ;(gtk-destroy-window  )
-  
-  (leave-gtk-main))
+  (gtk-widget-destroy (eli-window eli))
+  (format t "quit done~%"))
 
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
@@ -221,10 +217,10 @@ processing"
     (setf keymap-instant  (new-keymap))
     (bind keymap-instant  "C-g" #'inst-cancel)
     (bind keymap-instant "BS" #'inst-back-up)
-) )
+))
     
 
-(defun test (inst)
+(defun test ()
   (let ((window nil))
        
     (defun run (&key (stdout *standard-output*))
@@ -240,7 +236,6 @@ processing"
 	  
 	  ;; create a window with a command line on the bottom.
 	  (let (( eli (make-bar window)))
-	    (setf (eli-instance eli) inst)
 	    (let ((workspace (make-instance 'gtk-box :orientation :vertical))
 		  (dummy (make-instance 'gtk-box ))
 		  (bar (eli-bar eli)))
@@ -262,37 +257,4 @@ processing"
     (run)))
 
 
-(defun damn ()
-  (let ((window nil)
-	(input nil))
-    (defun ttt (&key (stdout *standard-output*))
-      (within-main-loop
-	(setf *standard-output* stdout) ;enable output in this thread
-	
-	;; create a window with a command line on the bottom.      
-	(setf window (make-instance 'gtk-application-window
-				    :title "eli-test"
-				    :type :toplevel
-				    :border-width 0
-				    :default-width 640
-				    :default-height 480)
-	      input (make-instance 'gtk-entry ))
-	(gtk-container-add window input)
-	
-	(g-signal-connect window "key-press-event"
-			  (lambda (widget event)
-			    (declare (ignore widget))
-			    (let ((gtkkey (gdk-event-key-keyval event)))
-			      (if (= gtkkey #xff0d)
-				  (gtk-widget-hide input))
-			      (format t "ON-KEY-PRESS ~A~%" gtkkey)))
 
-			  )
-	(g-signal-connect window "destroy"
-			  (lambda (widget)
-			    (declare (ignore widget))
-			    (format t "done")
-			    (leave-gtk-main)))
-	(gtk-widget-show-all window)
-	))
-    (ttt)))
