@@ -106,12 +106,12 @@
 	      )))
     
     (defun dispatch-match (match)
-      (typecase match
-	(function
-	 (funcall match) ;non-interactive function or lambda
-	 (reset))
-	(symbol
-	 (funcall (setf interactive (symbol-function match)) 0))))
+      (if (get 'match 'interactive)
+	  (funcall (setf interactive (symbol-function match)) 0)
+	  (progn
+	    (funcall (symbol-function match))
+	    (reset)
+	    t)))
     (defun input-keystroke ()
       "process a keystroke."
           (format t "~A input keystroke~%" instance)
@@ -119,7 +119,7 @@
 	(unless (if match
 		    (progn
 		      (format t "MATCH: ~A~%" match)
-		      (funcall match))
+		      (funcall (symbol-function match)))
 		    ) ;instant processing nil? continue
 	  (if interactive
 	      (funcall interactive 1) ;returns nil/t to process keys in gtk
@@ -163,7 +163,7 @@
 
 (defun test (inst)
   (let ((window nil))
-    (defun fun1 () (format t "fun1")
+    (defun fun1 () (format t "fun1 instancd ~A~%" (instance))
 	   (reset))
     (defun fun2 () (format t "fun2")
 	   (reset :full t))
@@ -178,14 +178,15 @@
     
     (defun bind-keys ()
       (set-keymap-top (new-keymap))
-      (bind (keymap-top) "C-xC-c" #'app-quit)
-      (bind (keymap-top) "C-a" #'fun1)
-      (bind (keymap-top) "C-b" #'fun2)
+      (bind (keymap-top) "C-xC-c" 'app-quit)
+      (bind (keymap-top) "C-a" 'fun1)
+      (bind (keymap-top) "C-b" 'fun2)
       (bind (keymap-top) "C-c" 'fun3)
 
       (set-keymap-instant (new-keymap))
-      (bind (keymap-instant) "C-g" #'cmd-cancel)
-      (bind (keymap-instant) "BS" #'cmd-back-up)
+      (bind (keymap-instant) "C-g" 'cmd-cancel)
+      (bind (keymap-instant) "BS" 'cmd-back-up)
+      (setf (get 'fun3 'interactive) t)
       )
 
     (defun app-quit ()
