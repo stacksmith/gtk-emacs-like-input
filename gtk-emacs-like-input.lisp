@@ -15,7 +15,7 @@
   buffer         ;; sequence of keys from command start
   key            ;; active key
   interactive    ;; interactive function in control
-  instance
+  window         ;; top window
 )
 ;;; Key processing:
 ;;;
@@ -79,11 +79,9 @@
 (defun reset (eli &key (full nil))
   (with-slots (instance buffer entry left middle right interactive) eli
     "reset input state and visuals."
-    (format t "RESET: instance ~A~%" (eli-instance eli))
     (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
 	  (gtk-entry-text entry) "")
     (gtk-widget-hide entry)
-    
     (gtk-label-set-text left "")
     (gtk-label-set-text middle "")
     (gtk-label-set-text right "")
@@ -157,7 +155,8 @@ processing"
     (with-slots (bar left middle entry right) eli
       (unless eli-map
 	(setf eli-map (make-hash-table)))
-      (setf (gethash window eli-map) eli)
+      (setf (gethash window eli-map) eli
+	    (eli-window eli) window)
       (setf bar (make-instance 'gtk-box :orientation :horizontal )
 	    left (make-instance 'gtk-label :label "left"  )
 	    middle (make-instance 'gtk-label :label "middle" ) 
@@ -189,25 +188,26 @@ processing"
 
 
 
-(defun fun1 (eli) (format t "fun1 instancd ~%")
+(defun fun1 (eli) (format t "fun1~%")
        (reset eli))
-(defun fun2 (eli) (format t "fun2")
+(defun fun2 (eli) (format t "fun2~%")
        (reset eli :full t))
 (defun fun3 (eli stage)
   (case stage
-    (:initialize (format t "fun3: 0 instance ~A~%" (eli-instance eli))
+    (:initialize
        (use-entry eli t) 1)
     (:process
-     (format t "fun3: 1 instance ~A~%" (eli-instance eli) )
+     (format t "fun3: 1 instance ~A~%" (eli-key) )
      nil ;let gtk work with the entry editor...
      )
     (:finalize
-     (format t "fun3: 2  instance ~A~%" (eli-instance eli))
+     (format t "fun3: finalizing~%")
      (use-entry eli nil)
      t))
   )
 (defun quit (eli)
-  (declare (ignore eli))
+  ;(gtk-destroy-window  )
+  
   (leave-gtk-main))
 
 (defun bind-keys (eli)
