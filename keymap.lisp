@@ -54,7 +54,7 @@
        if (>=  mismatch keystr-length) collect i ;collect partials
 	 )))
 
-(defun keymap-absolute-match (map keystr)
+(defun keymap-exact-match (map keystr)
   "return matching symbol or nil"
   (loop for i from (keymap-high-index map) downto 0
      for k = (elt (keymap-keystrs map) i)
