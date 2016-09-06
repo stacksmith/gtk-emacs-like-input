@@ -33,45 +33,48 @@
 (defparameter eli-map nil)
 
 (defun render (eli &key (match nil))
-  (let ((keystr(buffer->string (eli-buffer eli)) ))
-    (format t "RENDER ~A~%" keystr)
-    (unless match
-      (unless (zerop (length keystr))
-	(setf match (keymap-match (eli-keymap-top eli) keystr))))
-	(gtk-label-set-text (eli-left eli)  keystr)
-	(gtk-label-set-text (eli-middle eli) "")
+  (with-slots (buffer keymap-top left middle right) eli
+    (let ((keystr(buffer->string buffer) ))
+      (format t "RENDER ~A~%" keystr)
+      (unless match
+	(unless (zerop (length keystr))
+	  (setf match (keymap-match keymap-top keystr))))
+      (gtk-label-set-text left  keystr)
+      (gtk-label-set-text middle "")
 					;      (setf (gtk-entry-text middle) "")
-	(and (listp match)	;could be symbol
-	     (gtk-label-set-text (eli-right eli)
-				 (format nil "~A matches" (length match))))))
+      (and (listp match)	;could be symbol
+	   (gtk-label-set-text right
+			       (format nil "~A matches" (length match)))))))
 
 (defun reset (eli &key (full nil))
-  "reset input state and visuals."
-  (format t "RESET: instance ~A~%" (eli-instance eli))
-  (setf (eli-buffer eli) (make-array 32 :fill-pointer 0 :adjustable t)
-	(gtk-entry-text (eli-entry eli)) "")
-  (gtk-widget-hide (eli-entry eli))
-  
-  (gtk-label-set-text (eli-left eli) "")
-  (gtk-label-set-text (eli-middle eli) "")
-  (gtk-label-set-text (eli-right eli) "")
-  
-  (when full ; reset interactive stuff
-    (and (eli-interactive eli)
-	 (funcall (eli-interactive eli) eli 2))
-    (setf (eli-interactive eli) nil))
+  (with-slots (instance buffer entry left middle right interactive) eli
+    "reset input state and visuals."
+    (format t "RESET: instance ~A~%" (eli-instance eli))
+    (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
+	  (gtk-entry-text entry) "")
+    (gtk-widget-hide entry)
+    
+    (gtk-label-set-text left "")
+    (gtk-label-set-text middle "")
+    (gtk-label-set-text right "")
+    
+    (when full ; reset interactive stuff
+      (and interactive
+	   (funcall interactive eli 2))
+      (setf interactive nil)))
   t)
 
- (defun use-entry (eli on)
-   (format t "USE-ENTRY~%")
-   (if on
-       (progn
-	 (gtk-widget-hide (eli-middle eli))
-	 (gtk-widget-show (eli-entry eli))
-	 (gtk-widget-grab-focus (eli-entry eli)))
-       (progn
-	 (gtk-widget-hide (eli-entry eli))
-	 (gtk-widget-show (eli-middle eli)))))
+(defun use-entry (eli on)
+  (with-slots (middle entry) eli
+    (format t "USE-ENTRY~%")
+    (if on
+	(progn
+	  (gtk-widget-hide middle)
+	  (gtk-widget-show entry)
+	  (gtk-widget-grab-focus entry))
+	(progn
+	  (gtk-widget-hide entry)
+	  (gtk-widget-show middle)))))
 
     
 (defun cmd-cancel (eli)
@@ -80,17 +83,18 @@
 	 ))
 
 (defun cmd-back-up (eli)
-  (format t "int ~A SIZE: ~A~%" (eli-interactive eli) (length (eli-buffer eli)))
-  
-  (if (eli-interactive eli)
-      nil ;let interactive do its own backup
-      (progn
-	(unless (zerop (length (eli-buffer eli)))
-	  (vector-pop (eli-buffer eli))
-	  (render eli))
-	t;we eat the key
-	)))
+  (with-slots (buffer interactive) eli
+    (format t "int ~A SIZE: ~A~%" interactive (length buffer))
     
+    (if interactive
+	nil ;let interactive do its own backup
+	(progn
+	  (unless (zerop (length buffer))
+	    (vector-pop buffer)
+	    (render eli))
+	  t;we eat the key
+	  ))))
+  
 (defun dispatch-match (eli match)
   (if (get match 'interactive)
       (funcall (setf (eli-interactive eli) (symbol-function match)) eli 0)
@@ -101,51 +105,47 @@
 
 (defun input-keystroke (eli)
   "process a keystroke."
-  (format t "input keystroke inst ~A~%" (eli-instance eli))
-  (let ((match (keymap-exact-match (eli-keymap-instant eli) (key->string (eli-key eli)))))
-    (unless (if match
-		(progn
-		  (format t "MATCH: ~A~%" match)
-		  (funcall (symbol-function match) eli))
-		) ;instant processing nil? continue
-      (if (eli-interactive eli)
-	  (funcall (eli-interactive eli) eli 1) ;returns nil/t to process keys in gtk
-	  (progn
-	    (vector-push-extend (eli-key eli) (eli-buffer eli)) ;append key
-	    (let ((match (keymap-match (eli-keymap-top eli) (buffer->string (eli-buffer eli)))))
-	      (render eli :match match)
-	      (unless (listp match) (dispatch-match eli match)))
-	    t)))))
+  (with-slots (instance keymap-instant interactive key buffer keymap-top) eli
+    (format t "input keystroke inst ~A~%" instance)
+    (let ((match (keymap-exact-match keymap-instant (key->string key))))
+      (unless (if match
+		  (progn
+		    (format t "MATCH: ~A~%" match)
+		    (funcall (symbol-function match) eli))
+		  ) ;instant processing nil? continue
+	(if interactive
+	    (funcall interactive eli 1) ;returns nil/t to process keys in gtk
+	    (progn
+	      (vector-push-extend key buffer) ;append key
+	      (let ((match (keymap-match keymap-top (buffer->string buffer))))
+		(render eli :match match)
+		(unless (listp match) (dispatch-match eli match)))
+	      t))))))
 
 
 (defun on-key-press (widget event)
   "Process a key from GTK; return key structure or nil for special keys"
-  (let ((eli (gethash widget eli-map))))
-
-  (let ((gtkkey (gdk-event-key-keyval event)))
-    (setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
-    (format t "ON-KEY-PRESS INSTANCE ~A ~A~%" (eli-instance eli) (eli-key eli))
-    (or (modifier-p gtkkey) ;do not process modifiers, gtk will handle them
-	(input-keystroke eli) ;let them decide if to continue with key process
-	)))
+  (let ((eli (gethash widget eli-map))
+	(gtkkey (gdk-event-key-keyval event)))
+    (with-slots (key instance) eli
+      (setf key (make-key gtkkey (gdk-event-key-state event)))
+      (format t "ON-KEY-PRESS INSTANCE ~A ~A~%" instance key)
+      (or (modifier-p gtkkey) ;do not process modifiers, gtk will handle them
+	  (input-keystroke eli) ;let them decide if to continue with key process
+	  ))))
   
 (defun make-bar (window)
   (let ((eli (make-eli)))
-    (unless eli-map
-      (setf eli-map (make-hash-table)))
-    (setf (gethash window eli-map) eli)
-    
-    (let ((bar (make-instance 'gtk-box :orientation :horizontal ))
-	  (left (make-instance 'gtk-label :label "left"  ))
-	  (middle (make-instance 'gtk-label :label "middle" ))
-	  (entry (make-instance 'gtk-entry :label "entry"  )) 
-	  (right (make-instance 'gtk-label :label "right" )))
-      (setf (eli-bar eli) bar 
-	    (eli-left eli) left
-	    (eli-middle eli) middle
-	    (eli-entry eli) entry
-	    (eli-right eli) right)
-      
+    (with-slots (bar left middle entry right) eli
+      (unless eli-map
+	(setf eli-map (make-hash-table)))
+      (setf (gethash window eli-map) eli)
+      (setf bar (make-instance 'gtk-box :orientation :horizontal )
+	    left (make-instance 'gtk-label :label "left"  )
+	    middle (make-instance 'gtk-label :label "middle" ) 
+	    entry (make-instance 'gtk-entry :label "entry"  ) 
+	    right (make-instance 'gtk-label :label "right" ))
+	
       (gtk-box-pack-start    bar left :expand nil)
       (gtk-box-pack-start    bar middle :expand t)
       (gtk-box-pack-start    bar entry :expand t)
@@ -174,16 +174,20 @@
   )
 
 (defun bind-keys (eli)
+  (with-slots (keymap-top keymap-instant) eli
+    (setf keymap-top   (new-keymap))
+    (bind keymap-top  "C-xC-c" 'app-quit)
+    (bind keymap-top  "C-a" 'fun1)
+    (bind keymap-top  "C-b" 'fun2)
+    (bind keymap-top  "C-c" 'fun3)
+    (setf (get 'fun3 'interactive) t)
+    (setf keymap-instant  (new-keymap))
+    (bind keymap-instant  "C-g" 'cmd-cancel)
+    (bind keymap-instant "BS" 'cmd-back-up)
+)
+  
   (format t "binding keys for instance ~A~%" (eli-instance eli))
-  (setf (eli-keymap-top eli)   (new-keymap))
-  (bind (eli-keymap-top eli) "C-xC-c" 'app-quit)
-  (bind (eli-keymap-top eli) "C-a" 'fun1)
-  (bind (eli-keymap-top eli) "C-b" 'fun2)
-  (bind (eli-keymap-top eli) "C-c" 'fun3)
-  (setf (get 'fun3 'interactive) t)
-  (setf (eli-keymap-instant eli) (new-keymap))
-  (bind (eli-keymap-instant eli) "C-g" 'cmd-cancel)
-  (bind (eli-keymap-instant eli)"BS" 'cmd-back-up)
+  
   
   )
     
