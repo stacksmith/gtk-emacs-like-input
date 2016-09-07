@@ -1,10 +1,17 @@
 (in-package :gtk-emacs-like-input)
 
-;;; Key bindings are stored in keymaps.  A keymap is an entity consisting
+;;; Key bindings are stored in keymaps.
+;;;
+;;; We associate keystrs like "M-C-xCk-hello" with symbols or functions
+;;; Note: for historical reasons we refer to the rhs as symbol, but
+;;; it may be a function pointer
+;;;
+;;; Implementation: A keymap is an entity consisting
 ;;; of an array of strings containing textual descriptions of keys,
 ;;; and a matching array of function symbols.
 ;;;
-;;; 
+;;; We also use intermediate indices into the arrays.
+;;;
 (defstruct (keymap
 	     (:print-function
 	      (lambda (struct stream depth)
@@ -35,12 +42,6 @@
   (vector-push-extend keystr (keymap-keystrs keymap))
   (vector-push-extend symbol (keymap-symbols keymap)))
 
-(defun btest ()
-  (setf *keymap-top* (new-keymap))
-  (bind *keymap-top* "C-xC-y" 'y)
-  (bind *keymap-top* "C-xC-b" 'b)
-  (bind *keymap-top* "C-z" 'z))
-
 (defun keymap-match (map keystr)
   "Search for a match for a keystr in a keymap.  Return one of:
 -nil - if not matching at all
@@ -56,7 +57,7 @@
 
 (defun keymap-exact-match (map keystr)
   "return matching symbol or nil"
-  (loop for i from (keymap-high-index map) downto 0
+  (loop for i from (keymap-high-index map) downto 0 ;backwards
      for k = (elt (keymap-keystrs map) i)
      when (equal keystr k)
        do (return (keymap-symbol-at map i))

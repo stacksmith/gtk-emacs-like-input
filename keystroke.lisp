@@ -21,7 +21,8 @@
 
 (defparameter keyval-spec (byte 24 0))
 (defparameter keymod-spec (byte 8 24))
-
+;;; key is not a struct, but we never set it.  Usually, we start with 0
+;;; and addf masks and values.  These accessors are macros:
 (defmacro key-val (key)
   "return keyval of the key"
   `(ldb keyval-spec ,key))
@@ -29,8 +30,9 @@
   "return mod flags of key, not settable"
   `(mask-field keymod-spec ,key))
 
-(defun key-char (key)
+(defun key->character (key)
   "return a Lisp character corresponding to this key"
+  ;;;TODO: fix this
   (and (<  (key-val key) char-code-limit)
        (code-char (key-val key))))
 
@@ -42,7 +44,7 @@
   (when (logbitp mod-shift-bit   key) (write-sequence "S-" stream ))
   (when (logbitp mod-super-bit   key) (write-sequence "s-" stream ))
   (when (logbitp mod-hyper-bit   key) (write-sequence "H-" stream ))
-  (write-sequence (gtkcode->gtkcode-name (key-val key)) stream)
+  (write-sequence (gtkcode->gtkname (key-val key)) stream)
   ;(unless (zerop (key-mod key)) (write-char #\space stream))
   key)
 
@@ -66,14 +68,14 @@
 ;;;
 ;;; We only care about control and meta (alt key).
 ;;; Shift is already processed for us.
-(defun make-key (val &optional (gtk-modifiers nil)) 
+(defun make-key (val &optional (gtk-modifier-list nil)) 
   "create a key using the gtk modifier list"
-  (dolist (modifier gtk-modifiers)
+  (dolist (modifier gtk-modifier-list)
     (case modifier 
       (:control-mask (incf val MOD-CONTROL-MASK))
       (:mod1-mask    (incf val MOD-META-MASK))))
   val)
-
+;;; move to dead-code.
 (defun key-reader (stream char)
   "read textual character representations like <C-M-x> and return keys"
   (declare (ignore char))
@@ -92,12 +94,13 @@
     (loop for c = (read-char stream)
        until (char= c #\>) do
 	 (vector-push-extend c name))
-    (let ((gtkcode (gtkcode-name->gtkcode name)))
+    (let ((gtkcode (gtkname->gtkcode name)))
       (if gtkcode
 	  (incf key gtkcode)
 	  (error "~A is not a valid gtk key name" name)))
     key))
-(set-macro-character #\< #'key-reader) 
+;(set-macro-character #\< #'key-reader)
+
 
 
 

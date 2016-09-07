@@ -10,26 +10,21 @@
 ;;; as necessary.
 
 ;;;   Note that #'equalp is used, making name lookup case-insensitive.
-(defvar *gtkcode-name-map* (make-hash-table))
-(defvar *name-gtkcode-map* (make-hash-table :test 'equal))
+(defvar *gtkcode-gtkname-map* (make-hash-table))
+(defvar *gtkname-gtkcode-map* (make-hash-table :test 'equal))
 
-(defun define-gtkcode (gtkcode name)
-  "Define a mapping from a gtkcode name to a gtkcode."
-  (setf (gethash gtkcode *gtkcode-name-map*) name
-        (gethash name *name-gtkcode-map*) gtkcode))
+(defun define-gtkcode (gtkcode gtkname)
+  "Define a mapping from a gtkname to a gtkcode."
+  (setf (gethash gtkcode *gtkcode-gtkname-map*) gtkname
+        (gethash gtkname *gtkname-gtkcode-map*) gtkcode))
 
-(defun gtkcode-name->gtkcode (name)
-  "Return the gtkcode corresponding to NAME."
-  (multiple-value-bind (value present-p)
-      (gethash name *name-gtkcode-map*)
-    (declare (ignore present-p))
-    value))
+(defun gtkname->gtkcode (gtkname)
+  "Return the gtkcode corresponding to NAME or nil"
+  (gethash gtkname *gtkname-gtkcode-map*))
 
-(defun gtkcode->gtkcode-name (gtkcode)
+(defun gtkcode->gtkname (gtkcode)
   "Return the name corresponding to GTKCODE or nil"
-  (let ((name (gethash gtkcode *gtkcode-name-map*)))
-    (or name
-	(error 'eli-error :message "gtkcode is not known"))))
+  (gethash gtkcode *gtkcode-gtkname-map*))
 
 ;;OK, I will rip out X11/GTK gtkcodes and name a few the Emacs way...
 (define-gtkcode #xff0d "RET")  ;Return, enter
