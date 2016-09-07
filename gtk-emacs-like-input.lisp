@@ -4,8 +4,8 @@
 ;;; The key to using eli is the eli structure.  It contains the entire
 ;;; state of the input system, including the relevant gtk objects.
 ;;;
-(defstruct eli
-  bar            ;; gtk container
+(defstruct (eli (:constructor construct-eli))
+  bar	 ;; gtk container
   left           ;; gtk label on left side (keys as entered)
   middle         ;; gtk label in the middle 
   entry          ;; gtk text entry, hidden on start
@@ -16,6 +16,7 @@
   key            ;; active key
   interactive    ;; interactive function in control
   window         ;; top window
+
 )
 ;;; Key processing:
 ;;;
@@ -149,10 +150,10 @@ processing"
 	(setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
 	(input-keystroke eli)))))
  
-(defun make-bar (window)
+(defun make-eli (window)
   "Create an eli command bar; return eli"
-  (let ((eli (make-eli)))
-    (with-slots (bar left middle entry right) eli
+  (let ((eli (construct-eli)))
+    (with-slots (bar left middle entry right keymap-top keymap-instant) eli
       (unless eli-map
 	(setf eli-map (make-hash-table)))
       (setf (gethash window eli-map) eli
@@ -162,15 +163,27 @@ processing"
 	    middle (make-instance 'gtk-label :label "middle" ) 
 	    entry (make-instance 'gtk-entry :label "entry"  ) 
 	    right (make-instance 'gtk-label :label "right" ))
-	
+      ;;note:
       (gtk-box-pack-start    bar left :expand nil)
       (gtk-box-pack-start    bar middle :expand t)
       (gtk-box-pack-start    bar entry :expand t)
-      (gtk-box-pack-start    bar right :expand nil))
+      (gtk-box-pack-start    bar right :expand nil)
+      ;; set up keymaps
+      (setf keymap-top  (new-keymap)
+	    keymap-instant (new-keymap))
+      ;; and instant key processing
+      (bind keymap-instant  "C-g" #'inst-cancel)
+      (bind keymap-instant "BS" #'inst-back-up)
+      ; default keystrokes
+      (bind keymap-top  "C-xC-c" #'app-quit) 
+)
+
+    
+    
+   
     eli))
 
 ;;; Some helper functions that can be bound
-
 (defun inst-cancel (eli)
   "Cancel command, reset"
   (reset eli :full t ))
@@ -184,6 +197,10 @@ processing"
 	(vector-pop buffer)
 	(render eli))
       t)))
+(defun app-quit (eli)
+  (gtk-widget-destroy (eli-window eli))
+  (format t "quit done~%"))
+
 
 (defun fun1 (eli) (format t "fun1~%")
        (reset eli))
@@ -202,21 +219,14 @@ processing"
      (use-entry eli nil)
      t))
   )
-(defun quit (eli)
-  (gtk-widget-destroy (eli-window eli))
-  (format t "quit done~%"))
+
 
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
-    (setf keymap-top   (new-keymap))
-    (bind keymap-top  "C-xC-c" #'quit) 
     (bind keymap-top  "C-a" #'fun1)
     (bind keymap-top  "C-b" #'fun2)
     (bind keymap-top  "C-c" 'fun3) ;interactive - ' not #'
 
-    (setf keymap-instant  (new-keymap))
-    (bind keymap-instant  "C-g" #'inst-cancel)
-    (bind keymap-instant "BS" #'inst-back-up)
 ))
     
 
@@ -235,7 +245,7 @@ processing"
 				      :default-height 480))
 	  
 	  ;; create a window with a command line on the bottom.
-	  (let (( eli (make-bar window)))
+	  (let (( eli (make-eli window)))
 	    (let ((workspace (make-instance 'gtk-box :orientation :vertical))
 		  (dummy (make-instance 'gtk-box ))
 		  (bar (eli-bar eli)))

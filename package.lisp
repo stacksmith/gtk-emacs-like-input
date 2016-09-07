@@ -11,8 +11,9 @@
 	   :eli-bar :eli-left :eli-middle :eli-entry :eli-right :eli-keymap-top
 	   :eli-keymap-instant :eli-buffer :eli-key :eli-interactive :eli-window
 	    ;; gtk-emacs-like-input
-	   :make-bar
-	   :new-keymap
+	   :make-eli
+	   :reset
+	   ;; useful bindings and callbacks
 	   :inst-cancel
 	   :inst-back-up
 	   :on-key-press
