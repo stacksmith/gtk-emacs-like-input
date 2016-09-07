@@ -1,5 +1,5 @@
 (in-package :gtk-emacs-like-input)
-;;; Keyboard
+;;; Keystroke
 ;;;
 
 (defconstant MOD-CONTROL-BIT 24)
@@ -15,6 +15,9 @@
 (defconstant MOD-SHIFT-MASK   (ash 1 MOD-SHIFT-BIT) ) 
 (defconstant MOD-SUPER-MASK   (ash 1 MOD-SUPER-BIT) ) 
 (defconstant MOD-HYPER-MASK   (ash 1 MOD-HYPER-BIT) )
+
+
+(deftype key () '(integer 0 #x3FFFFFFFF))
 
 (defparameter keyval-spec (byte 24 0))
 (defparameter keymod-spec (byte 8 24))
@@ -71,14 +74,30 @@
       (:mod1-mask    (incf val MOD-META-MASK))))
   val)
 
-
-
-(defun keystroke-setup (widget)     ;; wiring
-    (g-signal-connect widget "key-press-event" 'on-key-press)
-   ; (g-signal-connect widget "key-release-event" 'on-key-release)
-)
-
-
+(defun key-reader (stream char)
+  "read textual character representations like <C-M-x> and return keys"
+  (declare (ignore char))
+  (let ((key 0)
+	(name (make-array 32 :element-type 'character :fill-pointer 0 :adjustable t)))
+    (loop for i upto 80 
+       for c1 = (read-char stream)
+       for c2 = (peek-char nil stream)
+       while (char= #\- c2) do
+	 (if (char= #\> c1) ;prevent <> or <C-> type errors
+	     (error "unexpected >" ))
+	 (read-char stream) ;skip the -
+	 (incf key (char->modmask c1))
+       finally (vector-push-extend c1 name))
+    ;; now collect the rest of the name
+    (loop for c = (read-char stream)
+       until (char= c #\>) do
+	 (vector-push-extend c name))
+    (let ((gtkcode (gtkcode-name->gtkcode name)))
+      (if gtkcode
+	  (incf key gtkcode)
+	  (error "~A is not a valid gtk key name" name)))
+    key))
+(set-macro-character #\< #'key-reader) 
 
 
 
