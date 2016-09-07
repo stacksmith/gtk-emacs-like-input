@@ -99,7 +99,16 @@
 	  (let ((end (position #\> str :start (1+ index))))
 	    (values (parse-gtkkey str index end key) (1+ end))))
 	(values (parse-gtkkey str index (1+ index) key) (1+ index)))))
-
+;;;
+;;; A gtkkey is represented bye a string by one of:
+;;; - a single character i.e. "A"
+;;; - a valid gtkname inside angle braces like <RET> (see keysyms.lisp)
+;;; Pay attention to lisp escapes, and additional escape for < outside <>:
+;;; "<>>" is >
+;;; "<\"" is "
+;;; "hello\\<world>" is "hello<world" (extra escape for <)
+;;; "<<>" is <
+;;; "\\<" is also <
 
 (defun key-reader (stream &key (buf (make-array 32 :element-type 'character :fill-pointer 0 :adjustable t)))
   "read a textual character representation like <C-M-x> and return key"
