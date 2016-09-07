@@ -111,6 +111,13 @@
   (with-slots (buffer interactive key keymap-top) eli
     (vector-push-extend key buffer)	;append key to buffer
     (let ((match (keymap-match keymap-top (buffer->string buffer))))
+      (if (consp match)
+	  (progn (format t "----~%")
+		 (loop for i in match do (format t "~A~%" (keymap-keystr-at keymap-top i)))
+		 (format t "++++~%"))
+	  
+	  )
+      
       (render eli :match match)
       
       (typecase match
@@ -174,6 +181,7 @@ processing"
       ;; and instant key processing
       (bind keymap-instant  "C-g" #'inst-cancel)
       (bind keymap-instant "BS" #'inst-back-up)
+      (bind keymap-instant "TAB" #'inst-tab)
       ; default keystrokes
       (bind keymap-top  "C-xC-c" #'app-quit) 
 )
@@ -188,6 +196,10 @@ processing"
   "Cancel command, reset"
   (reset eli :full t ))
 
+(defun inst-tab (eli)
+  (declare (ignore eli))
+  (format t "TAB...~%")
+  )
 (defun inst-back-up (eli)
   "instant. BS the last keystroke"
   (with-slots (buffer interactive) eli
@@ -223,10 +235,9 @@ processing"
 
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
-    (bind keymap-top  "C-a" #'fun1)
-    (bind keymap-top  "C-b" #'fun2)
+    (bind keymap-top  "C-aabracadabraRET" #'fun1)
+    (bind keymap-top  "C-aabracadilloRET" #'fun2)
     (bind keymap-top  "C-c" 'fun3) ;interactive - ' not #'
-
 ))
     
 

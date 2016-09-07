@@ -75,6 +75,33 @@
       (:control-mask (incf val MOD-CONTROL-MASK))
       (:mod1-mask    (incf val MOD-META-MASK))))
   val)
+
+(defun parse-gtkkey (str start end key)
+  "parse the gtkkey fragment of a string return updated key"
+  (let ((k (gtkname->gtkcode  (subseq str start end))))
+    (unless k  (error 'eli-error :message "parse-key: invalid string" :value str))
+    (+ key k)))
+
+(defun parse-one-key (str index)
+  "parse a string for key descriptions, and return key and index"
+  (let ((c (elt str index))
+	(key 0))
+    (if (char= c #\<)
+	(progn
+	  (incf index 1) ;skip <
+	  (loop for i upto 10
+	     for c1 = (elt str index)
+	     for c2 = (elt str (1+ index))
+	     while (char= #\- c2) do
+	       (incf index 2) ;skip the modifier pair
+	       (incf key (char->modmask c1)))
+	  ;;find ending >
+	  (let ((end (position #\> str :start (1+ index))))
+	    (values (parse-gtkkey str index end key) (1+ end))))
+	(values (parse-gtkkey str index (1+ index) key) (1+ index)))))
+
+
+
 ;;; move to dead-code.
 (defun key-reader (stream char)
   "read textual character representations like <C-M-x> and return keys"
