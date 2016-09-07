@@ -6,8 +6,6 @@
         :glib :gio :pango :cairo :cffi :common-lisp :cl)
   (:export :eli-error
 	   ;; eli structure, slots, accessors
-	   :bar :left :middle :entry :right :keymap-top
-	   :keymap-instant :buffer :key :interactive :window
 	   :eli-bar :eli-left :eli-middle :eli-entry :eli-right :eli-keymap-top
 	   :eli-keymap-instant :eli-buffer :eli-key :eli-interactive :eli-window
 	    ;; gtk-emacs-like-input
@@ -30,7 +28,7 @@
 	   :make-key            ;from gtk on-key data
 	   ;; keymap.lisp
 	   :bind
-	   :new-keymap
+	   :new-keymap 
 	   :keymap-symbol-at
 	   :keymap-keystr-at
 	   :keymap-match
