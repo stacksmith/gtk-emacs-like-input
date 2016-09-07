@@ -76,14 +76,14 @@
       (:mod1-mask    (incf val MOD-META-MASK))))
   val)
 
-(defun parse-gtkkey (str start end key)
+(defun parse-gtkkey-p (str start end key)
   "parse the gtkkey fragment of a string return updated key"
   (let ((k (gtkname->gtkcode  (subseq str start end))))
     (unless k  (error 'eli-error :message "parse-key: invalid string" :value str))
     (+ key k)))
 
-(defun parse-one-key (str index)
-  "parse a string for key descriptions, and return key and index"
+(defun parse-gtkkey-1 (str index)
+  "parse a string for a key description, and return key and index"
   (let ((c (elt str index))
 	(key 0))
     (if (char= c #\<)
@@ -101,9 +101,45 @@
 	(values (parse-gtkkey str index (1+ index) key) (1+ index)))))
 
 
+(defun key-reader (stream &key (buf (make-array 32 :element-type 'character :fill-pointer 0 :adjustable t)))
+  "read a textual character representation like <C-M-x> and return key"
+  (let ((key 0)
+	(c (read-char stream)))
+    (format t "---~c~%" c)
+    (setf (fill-pointer buf) 0)
+    (case c
+      (#\\ (vector-push (read-char stream) buf)) ;escapes in 
+      (#\< (loop for i upto 80 
+	      for c1 = (read-char stream)
+	      for c2 = (peek-char nil stream)
+	      while (char= #\- c2) do
+		(if (char= #\> c1)     ;prevent <> or <C-> type errors
+		    (error "unexpected >" ))
+		(read-char stream)	;skip the -
+		(incf key (char->modmask c1))
+	      finally (vector-push-extend c1 buf)) ;overshot, keep the char
+	   ;; now collect the rest of the buf
+	   (loop for c = (read-char stream)
+	      if (char= c #\\) do
+		(setf c (read-char stream))
+	      until (char= c #\>) do
+		(vector-push-extend c buf)))
+      (t (vector-push c buf))) ;not escape, 
+    (let ((gtkcode (gtkname->gtkcode buf)))
+      (if gtkcode
+	  (incf key gtkcode)
+	  (error "~A is not a valid gtk key name" buf)))
+    key))
 
+(defun parse-keystr (string)
+  (with-input-from-string (in string)
+    (let ((buffer (make-array 32 :element-type 'character :fill-pointer 0 :adjustable t) ))
+      (loop while (listen in)
+	 collect (key-reader in :buf buffer)))
+    )
+  )
 ;;; move to dead-code.
-(defun key-reader (stream char)
+(defun key-reader-old (stream char)
   "read textual character representations like <C-M-x> and return keys"
   (declare (ignore char))
   (let ((key 0)
