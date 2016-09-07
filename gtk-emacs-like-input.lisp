@@ -140,14 +140,14 @@ processing"
 	  ))))
 
 (defun on-key-press (widget event)
-  "Process a key from GTK; return key structure or nil for special keys"
-  (let ((eli (gethash widget eli-map))
-	(gtkkey (gdk-event-key-keyval event)))
-    (with-slots (key ) eli
-      (setf key (make-key gtkkey (gdk-event-key-state event)))
-      (or (modifier-p gtkkey) ;do not process modifiers, gtk will handle them
-	  (input-keystroke eli) ;let them decide if to continue with key process
-	  ))))
+  "Process a key from GTK; ignore modifier keys; process other keys in eli"
+  (let ((gtkkey (gdk-event-key-keyval event)))
+    (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
+      (let ((eli (gethash widget eli-map)))
+	(unless eli
+	  (error 'eli-error :message "eli:on-key-press: invalid window" :value widget))
+	(setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
+	(input-keystroke eli)))))
  
 (defun make-bar (window)
   "Create an eli command bar; return eli"
