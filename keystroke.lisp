@@ -130,18 +130,14 @@
 	  (error "~A is not a valid gtk key name" buf)))
     key))
 
-(defun parse-keystr (string)
-  "parse a keystring into a list of gtkkeys"
+(defun kbd (string)
+  "parse a string into a list of gtkkeys, using <M-x>hello notation"
   (with-input-from-string (in string)
     (let ((buffer (make-array 32 :element-type 'character :fill-pointer 0 :adjustable t) ))
       (loop while (listen in)
 	 collect (key-reader in :buf buffer)))))
 
 
-(defun print-keyvec (keyvec)
-  
-
-)
 
 
 ;;; move to dead-code.

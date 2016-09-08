@@ -12,10 +12,9 @@ eli is licenced under the BSD license, and is a work in progress - changes are b
 To add eli to your application, do something along the lines of
 
 ```lisp
- (let* ((eli (make-eli window))) ; create eli for this top window
-        (bar (eli-bar eli))      ; get the bar widget
+ (let ((eli (make-eli window))) ; create eli for this top window
    ... ;pack your gadgets into the window
-   (gtk-box-pack-end container bar :expand nil) ; place the eli-bar gadget on the bottom 
+   (gtk-box-pack-end container (eli-bar eli) :expand nil) ; place the eli-bar gadget on the bottom 
    (g-signal-connect window "key-press-event" #'on-key-press) ; connect default key processing
    (gtk-widget-show-all window)
    (reset eli :full t)) ;perform a full reset

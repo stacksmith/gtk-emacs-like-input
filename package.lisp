@@ -26,6 +26,7 @@
 	   :write-key
 	   :key->string
 	   :make-key            ;from gtk on-key data
+	   :kbd
 	   ;; keymap.lisp
 	   :bind
 	   :new-keymap 

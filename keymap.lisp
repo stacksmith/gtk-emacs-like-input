@@ -42,7 +42,7 @@
 
 (defun bind (keymap str symbol)
   "bind a str to a symbol in keymap"
-  (let* ((keylist (parse-keystr str))
+  (let* ((keylist (kbd str))
 	 (keyarr (make-array (length keylist) :initial-contents keylist)))
     (vector-push-extend keyarr (keymap-keystrs keymap))
     (vector-push-extend symbol (keymap-symbols keymap))))
