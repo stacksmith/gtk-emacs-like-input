@@ -32,7 +32,7 @@ fun1 must be defined like this
 (defun fun1 (eli)
   (format t "Fun1"))
 ```
-eli is a structure full of eli-related stuff that will allow you to do all kinds of magic.  I will expand on that later; or look for yourself at the top of `gtk-emacs-like-input.lisp`
+eli is a structure full of eli-related stuff that will allow you to do all kinds of magic.  I will expand on that later; or look for yourself at the top of [gtk-emacs-like-input.lisp](https://github.com/stacksmith/gtk-emacs-like-input/blob/master/gtk-emacs-like-input.lisp)
 
 Binding a symbol makes the function 'interactive'.  Such a function takes over the keyboard handling and interacts with the user.  Interactive functions are slightly more complicated: they get passed an eli structure and a keyword indicating what stage of processing is requested: :initialize, :process and :finalize.  :process means that a new key is sitting in (eli-key eli).  The other stages give you a chance to set up and break down.
 
