@@ -23,11 +23,11 @@ To add eli to your application, do something along the lines of
 This will provide you with a command bar with minimum functionality: `<BS>` (backspace), `<C-g>` (abort) and `<C-x><C-c>` (quit).
 
 To bind simple commands, 
-```
+```lisp
     (bind (keymap-top eli)  "<C-a>abracadabra<RET>" #'fun1)
 ```
 fun1 must be defined like this
-```
+```lisp
 (defun fun1 (eli)
   (format t "Fun1"))
 ```
@@ -37,7 +37,7 @@ Binding a symbol, creates an 'interactive' function.  Such a function takes over
 
 Interactive functions also return a value - nil to let gtk continue processing the key or t if the processing is complete.
 Here is a working example that allows text entry right in the bar:
-```
+```lisp
     (bind (keymap-top eli)  "<C-a>" 'fun3)  ; bind an interactive function
 	...
 (defun fun3 (eli stage)
