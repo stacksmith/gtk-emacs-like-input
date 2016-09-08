@@ -21,7 +21,7 @@ To add eli to your application, do something along the lines of
    (reset eli :full t)) ;perform a full reset
    ...
 ```
-This will provide you with a command bar with minimum functionality: `<BS>` (backspace), `<C-g>` (abort) and `<C-x><C-c>` (quit).
+This will provide you with a command bar with minimum functionality: `<BS>` (backspace), `<C-g>` (abort) and `<C-x><C-c>` (quit) amd `<TAB>` to autocomplete full or partial matches.
 
 To bind simple commands, 
 ```lisp
