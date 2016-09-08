@@ -62,12 +62,10 @@
 	(setf match (keymap-match keymap-top buffer))))
     ;; match now nil, list, or a hit
     ;;    (gtk-label-set-text left (keyseq->string buffer) )
-    (let ((string (keyseq->string buffer)))
-      (gtk-label-set-markup
-       left (if match
-		(html-escape (html-escape string) )
-		(format nil  "<span background=\"#FFFF00\">~A</span>"
-			(html-escape string)))))
+    (let ((string (html-escape (keyseq->string buffer))))
+      (gtk-label-set-markup       left (if match
+		(format nil  "<span foreground=\"#000088\">~A</span>" string)
+		string)))
     (gtk-label-set-text middle "")
     (gtk-label-set-text right
 			(if (consp match)
