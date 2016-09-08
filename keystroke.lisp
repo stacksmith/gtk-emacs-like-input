@@ -52,12 +52,12 @@
     (when brace (write-char #\> stream)))
   key)
 
-(defun write-keys (keys stream)
-  (loop for key across keys do
+(defun write-keyseq (keyseq stream)
+  (loop for key across keyseq do
        (write-key key stream)))
   
-(defun keys->string (keys)
-  (with-output-to-string (s) (write-keys keys s)))
+(defun keyseq->string (keys)
+  (with-output-to-string (s) (write-keyseq keys s)))
 
 (defun key->string (key)
   "Convert a key into a string representation"
@@ -131,7 +131,7 @@
     key))
 
 (defun kbd (string)
-  "parse a string into a list of gtkkeys, using <M-x>hello notation"
+  "parse a string into a _list_ of gtkkeys, using <M-x>hello notation"
   (with-input-from-string (in string)
     (let ((buffer (make-array 32 :element-type 'character :fill-pointer 0 :adjustable t) ))
       (loop while (listen in)
@@ -141,6 +141,7 @@
 
 
 ;;; move to dead-code.
+#|
 (defun key-reader-old (stream char)
   "read textual character representations like <C-M-x> and return keys"
   (declare (ignore char))
@@ -189,6 +190,7 @@
 	    (values (parse-gtkkey str index end key) (1+ end))))
 	(values (parse-gtkkey str index (1+ index) key) (1+ index)))))
 ;(set-macro-character #\< #'key-reader)
+|#
 
 
 

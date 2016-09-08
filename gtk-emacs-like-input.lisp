@@ -54,13 +54,6 @@
 ;;;   handler with :finalize (from inside the handler!)  You've been warned.
 
 
-(defun buffer->string (buffer)
-  "convert a vector of keys into its string representation"
-  (with-output-to-string (s)
-    (loop for key across buffer do (write-key key s ))))
-
-(defparameter eli-map nil)
-
 (defun render (eli &key (match nil))
   "Visually update the information in the bar"
   (with-slots (buffer keymap-top left middle right) eli
@@ -68,13 +61,13 @@
       (unless (zerop (length buffer)) ;if buffer length >0
 	(setf match (keymap-match keymap-top buffer))))
     ;; match now nil, list, or a hit
-    ;;    (gtk-label-set-text left (buffer->string buffer) )
-    (gtk-label-set-markup
-     left (if match
-	       (html-escape (buffer->string buffer))
-	       (format nil  "<span background=\"#FFFF00\">~A</span>"
-		       (html-escape (buffer->string buffer)))))
-    
+    ;;    (gtk-label-set-text left (keyseq->string buffer) )
+    (let ((string (keyseq->string buffer)))
+      (gtk-label-set-markup
+       left (if match
+		(html-escape (html-escape string) )
+		(format nil  "<span background=\"#FFFF00\">~A</span>"
+			(html-escape string)))))
     (gtk-label-set-text middle "")
     (gtk-label-set-text right
 			(if (consp match)
@@ -149,13 +142,15 @@ processing"
 (defun on-key-press (widget event)
   "Process a key from GTK; ignore modifier keys; process other keys in eli"
   (let ((gtkkey (gdk-event-key-keyval event)))
+    (format t "GTKKEY: ~A~%" gtkkey)
     (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
       (let ((eli (gethash widget eli-map)))
 	(unless eli
 	  (error 'eli-error :message "eli:on-key-press: invalid window" :value widget))
 	(setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
 	(input-keystroke eli)))))
- 
+
+(defparameter eli-map nil) ;;;TODO: remove killed, eli, etc...
 (defun make-eli (window)
   "Create an eli command bar; return eli"
   (let ((eli (construct-eli)))
@@ -182,12 +177,7 @@ processing"
       (bind keymap-instant "<BS>" #'inst-back-up)
       (bind keymap-instant "<TAB>" #'inst-tab)
       ; default keystrokes
-      (bind keymap-top  "<C-x><C-c>" #'app-quit) 
-)
-
-    
-    
-   
+      (bind keymap-top  "<C-x><C-c>" #'app-quit))
     eli))
 
 ;;; Some helper functions that can be bound
@@ -206,12 +196,12 @@ processing"
     (let ((match (keymap-match keymap-top buffer)))
       (when (consp match)
 	;; determine if all matches have a common beginning sequence
-	(let* ((first-keystr (keymap-keystr-at keymap-top (first match)))
+	(let* ((first-keystr (keymap-keyseq-at keymap-top (first match)))
 	       (buf-len (length buffer))
 	       (tab-by
 		(if (cdr match)
 		    (loop for i in (cdr match) ;loop for all matches but first
-		       for ks = (keymap-keystr-at keymap-top i) ;get keystrs
+		       for ks = (keymap-keyseq-at keymap-top i) ;get keystrs
 		       with ref = first-keystr
 		       minimize (mismatch ks ref :start1 buf-len :start2 buf-len))
 		    (length first-keystr))))

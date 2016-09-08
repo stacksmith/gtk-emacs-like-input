@@ -25,15 +25,16 @@
 (defun gtkcode->gtkname (gtkcode)
   "Return the name corresponding to GTKCODE or nil"
   (gethash gtkcode *gtkcode-gtkname-map*))
+(define-gtkcode #xffffff "VoidSymbol")   ;Void symbol
 
-;;OK, I will rip out X11/GTK gtkcodes and name a few the Emacs way...
-(define-gtkcode #xff0d "RET")  ;Return, enter
-(define-gtkcode #xff1b "ESC")
-(define-gtkcode #xff09 "TAB")
-(define-gtkcode #xff08 "BS")      ;Back space, back char
-(define-gtkcode #xffff "DEL")     ;Delete, rubout
+(defun modifier-p (gtkcode)
+  "check if the gtkcode is a modifier (shift, etc)"
+  (and (>= gtkcode #xffe1)
+       (<= gtkcode #xffee)))
+
+;;; ASCII
+;;;
 (define-gtkcode #x0020 "SPC")     ;U+0020 SPACE
-
 (define-gtkcode #x0021 "!")       ;U+0021 EXCLAMATION MAR
 (define-gtkcode #x0022 "\"")      ;U+0022 QUOTATION MARK
 (define-gtkcode #x0023 "#")       ;U+0023 NUMBER SIGN
@@ -49,6 +50,16 @@
 (define-gtkcode #x002d "-")          ;U+002D HYPHEN-MINUS
 (define-gtkcode #x002e ".")         ;U+002E FULL STOP
 (define-gtkcode #x002f "/")          ;U+002F SOLIDUS
+(define-gtkcode #x0030 "0")              ;U+0030 DIGIT ZERO
+(define-gtkcode #x0031 "1")              ;U+0031 DIGIT ONE
+(define-gtkcode #x0032 "2")              ;U+0032 DIGIT TWO
+(define-gtkcode #x0033 "3")              ;U+0033 DIGIT THREE
+(define-gtkcode #x0034 "4")              ;U+0034 DIGIT FOUR
+(define-gtkcode #x0035 "5")              ;U+0035 DIGIT FIVE
+(define-gtkcode #x0036 "6")              ;U+0036 DIGIT SIX
+(define-gtkcode #x0037 "7")              ;U+0037 DIGIT SEVEN
+(define-gtkcode #x0038 "8")              ;U+0038 DIGIT EIGHT
+(define-gtkcode #x0039 "9")              ;U+0039 DIGIT NINE
 (define-gtkcode #x003a ":")          ;U+003A COLON
 (define-gtkcode #x003b ";")      ;U+003B SEMICOLON
 (define-gtkcode #x003c "<")           ;U+003C LESS-THAN SIGN
@@ -56,103 +67,128 @@
 (define-gtkcode #x003e ">")        ;U+003E GREATER-THAN SIGN
 (define-gtkcode #x003f "?")       ;U+003F QUESTION MARK
 (define-gtkcode #x0040 "@")             ;U+0040 COMMERCIAL AT
+(define-gtkcode #x0041 "A")              ;U+0041 LATIN CAPITAL LETTER A
+(define-gtkcode #x0042 "B")              ;U+0042 LATIN CAPITAL LETTER B
+(define-gtkcode #x0043 "C")              ;U+0043 LATIN CAPITAL LETTER C
+(define-gtkcode #x0044 "D")              ;U+0044 LATIN CAPITAL LETTER D
+(define-gtkcode #x0045 "E")              ;U+0045 LATIN CAPITAL LETTER E
+(define-gtkcode #x0046 "F")              ;U+0046 LATIN CAPITAL LETTER F
+(define-gtkcode #x0047 "G")              ;U+0047 LATIN CAPITAL LETTER G
+(define-gtkcode #x0048 "H")              ;U+0048 LATIN CAPITAL LETTER H
+(define-gtkcode #x0049 "I")              ;U+0049 LATIN CAPITAL LETTER I
+(define-gtkcode #x004a "J")              ;U+004A LATIN CAPITAL LETTER J
+(define-gtkcode #x004b "K")              ;U+004B LATIN CAPITAL LETTER K
+(define-gtkcode #x004c "L")              ;U+004C LATIN CAPITAL LETTER L
+(define-gtkcode #x004d "M")              ;U+004D LATIN CAPITAL LETTER M
+(define-gtkcode #x004e "N")              ;U+004E LATIN CAPITAL LETTER N
+(define-gtkcode #x004f "O")              ;U+004F LATIN CAPITAL LETTER O
+(define-gtkcode #x0050 "P")              ;U+0050 LATIN CAPITAL LETTER P
+(define-gtkcode #x0051 "Q")              ;U+0051 LATIN CAPITAL LETTER Q
+(define-gtkcode #x0052 "R")              ;U+0052 LATIN CAPITAL LETTER R
+(define-gtkcode #x0053 "S")              ;U+0053 LATIN CAPITAL LETTER S
+(define-gtkcode #x0054 "T")              ;U+0054 LATIN CAPITAL LETTER T
+(define-gtkcode #x0055 "U")              ;U+0055 LATIN CAPITAL LETTER U
+(define-gtkcode #x0056 "V")              ;U+0056 LATIN CAPITAL LETTER V
+(define-gtkcode #x0057 "W")              ;U+0057 LATIN CAPITAL LETTER W
+(define-gtkcode #x0058 "X")              ;U+0058 LATIN CAPITAL LETTER X
+(define-gtkcode #x0059 "Y")              ;U+0059 LATIN CAPITAL LETTER Y
+(define-gtkcode #x005a "Z")              ;U+005A LATIN CAPITAL LETTER Z
 (define-gtkcode #x005b "[")    ;U+005B LEFT SQUARE BRACKET
 (define-gtkcode #x005c "\\")      ;U+005C REVERSE SOLIDUS
 (define-gtkcode #x005d "]")   ;U+005D RIGHT SQUARE BRACKET
 (define-gtkcode #x005e "^")    ;U+005E CIRCUMFLEX ACCENT
 (define-gtkcode #x005f "_")     ;U+005F LOW LINE
 (define-gtkcode #x0060 "`")          ;U+0060 GRAVE ACCENT
+(define-gtkcode #x0061 "a")              ;U+0061 LATIN SMALL LETTER A
+(define-gtkcode #x0062 "b")              ;U+0062 LATIN SMALL LETTER B
+(define-gtkcode #x0063 "c")              ;U+0063 LATIN SMALL LETTER C
+(define-gtkcode #x0064 "d")              ;U+0064 LATIN SMALL LETTER D
+(define-gtkcode #x0065 "e")              ;U+0065 LATIN SMALL LETTER E
+(define-gtkcode #x0066 "f")              ;U+0066 LATIN SMALL LETTER F
+(define-gtkcode #x0067 "g")              ;U+0067 LATIN SMALL LETTER G
+(define-gtkcode #x0068 "h")              ;U+0068 LATIN SMALL LETTER H
+(define-gtkcode #x0069 "i")              ;U+0069 LATIN SMALL LETTER I
+(define-gtkcode #x006a "j")              ;U+006A LATIN SMALL LETTER J
+(define-gtkcode #x006b "k")              ;U+006B LATIN SMALL LETTER K
+(define-gtkcode #x006c "l")              ;U+006C LATIN SMALL LETTER L
+(define-gtkcode #x006d "m")              ;U+006D LATIN SMALL LETTER M
+(define-gtkcode #x006e "n")              ;U+006E LATIN SMALL LETTER N
+(define-gtkcode #x006f "o")              ;U+006F LATIN SMALL LETTER O
+(define-gtkcode #x0070 "p")              ;U+0070 LATIN SMALL LETTER P
+(define-gtkcode #x0071 "q")              ;U+0071 LATIN SMALL LETTER Q
+(define-gtkcode #x0072 "r")              ;U+0072 LATIN SMALL LETTER R
+(define-gtkcode #x0073 "s")              ;U+0073 LATIN SMALL LETTER S
+(define-gtkcode #x0074 "t")              ;U+0074 LATIN SMALL LETTER T
+(define-gtkcode #x0075 "u")              ;U+0075 LATIN SMALL LETTER U
+(define-gtkcode #x0076 "v")              ;U+0076 LATIN SMALL LETTER V
+(define-gtkcode #x0077 "w")              ;U+0077 LATIN SMALL LETTER W
+(define-gtkcode #x0078 "x")              ;U+0078 LATIN SMALL LETTER X
+(define-gtkcode #x0079 "y")              ;U+0079 LATIN SMALL LETTER Y
+(define-gtkcode #x007a "z")              ;U+007A LATIN SMALL LETTER Z
 (define-gtkcode #x007b "{")      ;U+007B LEFT CURLY BRACKET
 (define-gtkcode #x007c "|")            ;U+007C VERTICAL LINE
 (define-gtkcode #x007d "}")     ;U+007D RIGHT CURLY BRACKET
 (define-gtkcode #x007e "~")     ;U+007E TILDE
 
-(define-gtkcode #xffffff "VoidSymbol")   ;Void symbol
+(define-gtkcode #xff08 "BS")      ;Back space, back char
+(define-gtkcode #xff09 "TAB")
+(define-gtkcode #xff0a "LINEFEED")       ;Linefeed, LF
+(define-gtkcode #xff0b "CLEAR")
+(define-gtkcode #xff0d "RET")  ;Return, enter
+(define-gtkcode #xff13 "PAUSE")          ;Pause, BRK
+(define-gtkcode #xff14 "SCROLL-LOCK")
+(define-gtkcode #xff15 "SYS-REQ")
+(define-gtkcode #xff1b "ESC")
+(define-gtkcode #xffff "DEL")     ;Delete, rubout
 
-(define-gtkcode #xff0a "Linefeed")       ;Linefeed, LF
-(define-gtkcode #xff0b "Clear")
-(define-gtkcode #xff13 "Pause")          ;Pause, hold
-(define-gtkcode #xff14 "Scroll_Lock")
-(define-gtkcode #xff15 "Sys_Req")
-
-
-(define-gtkcode #xff20 "Multi_key")      ;Multi-key character compose
-(define-gtkcode #xff37 "Codeinput")
-(define-gtkcode #xff3c "SingleCandidate")
-(define-gtkcode #xff3d "MultipleCandidate")
-(define-gtkcode #xff3e "PreviousCandidate")
-(define-gtkcode #xff21 "Kanji")          ;Kanji, Kanji convert
-(define-gtkcode #xff22 "Muhenkan")       ;Cancel Conversion
-(define-gtkcode #xff23 "Henkan_Mode")    ;Start/Stop Conversion
-(define-gtkcode #xff23 "Henkan")         ;Alias for Henkan_Mode
-(define-gtkcode #xff24 "Romaji")         ;to Romaji
-(define-gtkcode #xff25 "Hiragana")       ;to Hiragana
-(define-gtkcode #xff26 "Katakana")       ;to Katakana
-(define-gtkcode #xff27 "Hiragana_Katakana") ;Hiragana/Katakana toggle
-(define-gtkcode #xff28 "Zenkaku")        ;to Zenkaku
-(define-gtkcode #xff29 "Hankaku")        ;to Hankaku
-(define-gtkcode #xff2a "Zenkaku_Hankaku") ;Zenkaku/Hankaku toggle
-(define-gtkcode #xff2b "Touroku")        ;Add to Dictionary
-(define-gtkcode #xff2c "Massyo")         ;Delete from Dictionary
-(define-gtkcode #xff2d "Kana_Lock")      ;Kana Lock
-(define-gtkcode #xff2e "Kana_Shift")     ;Kana Shift
-(define-gtkcode #xff2f "Eisu_Shift")     ;Alphanumeric Shift
-(define-gtkcode #xff30 "Eisu_toggle")    ;Alphanumeric toggle
-(define-gtkcode #xff37 "Kanji_Bangou")   ;Codeinput
-(define-gtkcode #xff3d "Zen_Koho")       ;Multiple/All Candidate(s)
-(define-gtkcode #xff3e "Mae_Koho")       ;Previous Candidate
-(define-gtkcode #xff50 "Home")
-(define-gtkcode #xff51 "Left")           ;Move left, left arrow
-(define-gtkcode #xff52 "Up")             ;Move up, up arrow
-(define-gtkcode #xff53 "Right")          ;Move right, right arrow
-(define-gtkcode #xff54 "Down")           ;Move down, down arrow
-(define-gtkcode #xff55 "Prior")          ;Prior, previous
-(define-gtkcode #xff55 "Page_Up")
-(define-gtkcode #xff56 "Next")           ;Next
-(define-gtkcode #xff56 "Page_Down")
-(define-gtkcode #xff57 "End")            ;EOL
-(define-gtkcode #xff58 "Begin")          ;BOL
-(define-gtkcode #xff60 "Select")         ;Select, mark
-(define-gtkcode #xff61 "Print")
-(define-gtkcode #xff62 "Execute")        ;Execute, run, do
-(define-gtkcode #xff63 "Insert")         ;Insert, insert here
-(define-gtkcode #xff65 "Undo")
-(define-gtkcode #xff66 "Redo")           ;Redo, again
-(define-gtkcode #xff67 "Menu")
-(define-gtkcode #xff68 "Find")           ;Find, search
-(define-gtkcode #xff69 "Cancel")         ;Cancel, stop, abort, exit
-(define-gtkcode #xff6a "Help")           ;Help
-(define-gtkcode #xff6b "Break")
-(define-gtkcode #xff7e "Mode_switch")    ;Character set switch
-(define-gtkcode #xff7e "script_switch")  ;Alias for mode_switch
-(define-gtkcode #xff7f "Num_Lock")
-(define-gtkcode #xff80 "KP_Space")       ;Space
-(define-gtkcode #xff89 "KP_Tab")
-(define-gtkcode #xff8d "KP_Enter")       ;Enter
+(define-gtkcode #xff50 "HOME")
+(define-gtkcode #xff51 "LEFT")           ;Move left, left arrow
+(define-gtkcode #xff52 "UP")             ;Move up, up arrow
+(define-gtkcode #xff53 "RIGHT")          ;Move right, right arrow
+(define-gtkcode #xff54 "DOWN")           ;Move down, down arrow
+(define-gtkcode #xff55 "PAGE-UP")
+(define-gtkcode #xff56 "PAGE-DOWN")
+(define-gtkcode #xff57 "END")            ;
+;(define-gtkcode #xff58 "Begin")          ;BOL
+;(define-gtkcode #xff60 "Select")         ;Select, mark
+;(define-gtkcode #xff61 "Print")          ;TAKEN
+;(define-gtkcode #xff62 "Execute")        ;Execute, run, do
+(define-gtkcode #xff63 "INSERT")         ;Insert, insert here
+;(define-gtkcode #xff65 "Undo")
+;(define-gtkcode #xff66 "Redo")           ;Redo, again
+(define-gtkcode #xff67 "MENU")
+;(define-gtkcode #xff68 "Find")           ;Find, search
+;(define-gtkcode #xff69 "Cancel")         ;Cancel, stop, abort, exit
+;(define-gtkcode #xff6a "Help")           ;Help
+;(define-gtkcode #xff6b "BREAK")          ;same as PAUSE on my kbd
+(define-gtkcode #xff7f "NUM-LOCK")
+(define-gtkcode #xff80 "KP_SPACE")       ;Space
+(define-gtkcode #xff89 "KP_TAB")
+(define-gtkcode #xff8d "KP_ENTER")       ;Enter
 (define-gtkcode #xff91 "KP_F1")          ;PF1, KP_A, ...
 (define-gtkcode #xff92 "KP_F2")
 (define-gtkcode #xff93 "KP_F3")
 (define-gtkcode #xff94 "KP_F4")
-(define-gtkcode #xff95 "KP_Home")
-(define-gtkcode #xff96 "KP_Left")
-(define-gtkcode #xff97 "KP_Up")
-(define-gtkcode #xff98 "KP_Right")
-(define-gtkcode #xff99 "KP_Down")
-(define-gtkcode #xff9a "KP_Prior")
-(define-gtkcode #xff9a "KP_Page_Up")
-(define-gtkcode #xff9b "KP_Next")
-(define-gtkcode #xff9b "KP_Page_Down")
-(define-gtkcode #xff9c "KP_End")
-(define-gtkcode #xff9d "KP_Begin")
-(define-gtkcode #xff9e "KP_Insert")
-(define-gtkcode #xff9f "KP_Delete")
-(define-gtkcode #xffbd "KP_Equal")       ;Equals
-(define-gtkcode #xffaa "KP_Multiply")
-(define-gtkcode #xffab "KP_Add")
-(define-gtkcode #xffac "KP_Separator")   ;Separator, often comma
-(define-gtkcode #xffad "KP_Subtract")
-(define-gtkcode #xffae "KP_Decimal")
-(define-gtkcode #xffaf "KP_Divide")
+(define-gtkcode #xff95 "KP_HOME")
+(define-gtkcode #xff96 "KP_LEFT")
+(define-gtkcode #xff97 "KP_UP")
+(define-gtkcode #xff98 "KP_RIGHT")
+(define-gtkcode #xff99 "KP_DOWN")
+(define-gtkcode #xff9a "KP_PRIOR")
+(define-gtkcode #xff9a "KP_PAGE_UP")
+(define-gtkcode #xff9b "KP_NEXT")
+(define-gtkcode #xff9b "KP_PAGE_DOWN")
+(define-gtkcode #xff9c "KP_END")
+(define-gtkcode #xff9d "KP_BEGIN")
+(define-gtkcode #xff9e "KP_INSERT")
+(define-gtkcode #xff9f "KP_DELETE")
+(define-gtkcode #xffbd "KP_EQUAL")       ;Equals
+(define-gtkcode #xffaa "KP_MULTIPLY")
+(define-gtkcode #xffab "KP_ADD")
+(define-gtkcode #xffac "KP_SEPARATOR")   ;Separator, often comma
+(define-gtkcode #xffad "KP_SUBTRACT")
+(define-gtkcode #xffae "KP_DECIMAL")
+(define-gtkcode #xffaf "KP_DIVIDE")
 (define-gtkcode #xffb0 "KP_0")
 (define-gtkcode #xffb1 "KP_1")
 (define-gtkcode #xffb2 "KP_2")
@@ -163,6 +199,21 @@
 (define-gtkcode #xffb7 "KP_7")
 (define-gtkcode #xffb8 "KP_8")
 (define-gtkcode #xffb9 "KP_9")
+
+(define-gtkcode #xffe1 "SHIFT-L")        ;Left shift
+(define-gtkcode #xffe2 "SHIFT-R")        ;Right shift
+(define-gtkcode #xffe3 "CONTROL-L")      ;Left control
+(define-gtkcode #xffe4 "CONTROL-R")      ;Right control
+(define-gtkcode #xffe5 "CAPS-LOCK")      ;Caps lock
+;(define-gtkcode #xffe6 "SHIFT-LOCK")     ;Shift lock not on my kbd
+;(define-gtkcode #xffe7 "Meta_L")         ;Left meta
+;(define-gtkcode #xffe8 "Meta_R")         ;Right meta
+(define-gtkcode #xffe9 "ALT-L")          ;Left alt
+(define-gtkcode #xffea "ALT-R")          ;Right alt
+(define-gtkcode #xffeb "SUPER_L")        ;Left super (WINDOWS KEY)
+(define-gtkcode #xffec "SUPER_R")        ;Right super (WINDOWS KEY)
+;(define-gtkcode #xffed "Hyper_L")        ;Left hyper
+;(define-gtkcode #xffee "Hyper_R")        ;Right hyper
 (define-gtkcode #xffbe "F1")
 (define-gtkcode #xffbf "F2")
 (define-gtkcode #xffc0 "F3")
@@ -198,217 +249,11 @@
 (define-gtkcode #xffde "F33")
 (define-gtkcode #xffdf "F34")
 (define-gtkcode #xffe0 "F35")
-(define-gtkcode #xffe1 "Shift_L")        ;Left shift
-(define-gtkcode #xffe2 "Shift_R")        ;Right shift
-(define-gtkcode #xffe3 "Control_L")      ;Left control
-(define-gtkcode #xffe4 "Control_R")      ;Right control
-(define-gtkcode #xffe5 "Caps_Lock")      ;Caps lock
-(define-gtkcode #xffe6 "Shift_Lock")     ;Shift lock
-(define-gtkcode #xffe7 "Meta_L")         ;Left meta
-(define-gtkcode #xffe8 "Meta_R")         ;Right meta
-(define-gtkcode #xffe9 "Alt_L")          ;Left alt
-(define-gtkcode #xffea "Alt_R")          ;Right alt
-(define-gtkcode #xffeb "Super_L")        ;Left super
-(define-gtkcode #xffec "Super_R")        ;Right super
-(define-gtkcode #xffed "Hyper_L")        ;Left hyper
-(define-gtkcode #xffee "Hyper_R")        ;Right hyper
-(define-gtkcode #xfe01 "ISO_Lock")
-(define-gtkcode #xfe02 "ISO_Level2_Latch")
-(define-gtkcode #xfe03 "ISO_Level3_Shift")
-(define-gtkcode #xfe04 "ISO_Level3_Latch")
-(define-gtkcode #xfe05 "ISO_Level3_Lock")
-(define-gtkcode #xff7e "ISO_Group_Shift") ;Alias for mode_switch
-(define-gtkcode #xfe06 "ISO_Group_Latch")
-(define-gtkcode #xfe07 "ISO_Group_Lock")
-(define-gtkcode #xfe08 "ISO_Next_Group")
-(define-gtkcode #xfe09 "ISO_Next_Group_Lock")
-(define-gtkcode #xfe0a "ISO_Prev_Group")
-(define-gtkcode #xfe0b "ISO_Prev_Group_Lock")
-(define-gtkcode #xfe0c "ISO_First_Group")
-(define-gtkcode #xfe0d "ISO_First_Group_Lock")
-(define-gtkcode #xfe0e "ISO_Last_Group")
-(define-gtkcode #xfe0f "ISO_Last_Group_Lock")
-(define-gtkcode #xfe20 "ISO_Left_Tab")
-(define-gtkcode #xfe21 "ISO_Move_Line_Up")
-(define-gtkcode #xfe22 "ISO_Move_Line_Down")
-(define-gtkcode #xfe23 "ISO_Partial_Line_Up")
-(define-gtkcode #xfe24 "ISO_Partial_Line_Down")
-(define-gtkcode #xfe25 "ISO_Partial_Space_Left")
-(define-gtkcode #xfe26 "ISO_Partial_Space_Right")
-(define-gtkcode #xfe27 "ISO_Set_Margin_Left")
-(define-gtkcode #xfe28 "ISO_Set_Margin_Right")
-(define-gtkcode #xfe29 "ISO_Release_Margin_Left")
-(define-gtkcode #xfe2a "ISO_Release_Margin_Right")
-(define-gtkcode #xfe2b "ISO_Release_Both_Margins")
-(define-gtkcode #xfe2c "ISO_Fast_Cursor_Left")
-(define-gtkcode #xfe2d "ISO_Fast_Cursor_Right")
-(define-gtkcode #xfe2e "ISO_Fast_Cursor_Up")
-(define-gtkcode #xfe2f "ISO_Fast_Cursor_Down")
-(define-gtkcode #xfe30 "ISO_Continuous_Underline")
-(define-gtkcode #xfe31 "ISO_Discontinuous_Underline")
-(define-gtkcode #xfe32 "ISO_Emphasize")
-(define-gtkcode #xfe33 "ISO_Center_Object")
-(define-gtkcode #xfe34 "ISO_Enter")
-(define-gtkcode #xfe50 "dead_grave")
-(define-gtkcode #xfe51 "dead_acute")
-(define-gtkcode #xfe52 "dead_circumflex")
-(define-gtkcode #xfe53 "dead_tilde")
-(define-gtkcode #xfe54 "dead_macron")
-(define-gtkcode #xfe55 "dead_breve")
-(define-gtkcode #xfe56 "dead_abovedot")
-(define-gtkcode #xfe57 "dead_diaeresis")
-(define-gtkcode #xfe58 "dead_abovering")
-(define-gtkcode #xfe59 "dead_doubleacute")
-(define-gtkcode #xfe5a "dead_caron")
-(define-gtkcode #xfe5b "dead_cedilla")
-(define-gtkcode #xfe5c "dead_ogonek")
-(define-gtkcode #xfe5d "dead_iota")
-(define-gtkcode #xfe5e "dead_voiced_sound")
-(define-gtkcode #xfe5f "dead_semivoiced_sound")
-(define-gtkcode #xfe60 "dead_belowdot")
-(define-gtkcode #xfe61 "dead_hook")
-(define-gtkcode #xfe62 "dead_horn")
-(define-gtkcode #xfed0 "First_Virtual_Screen")
-(define-gtkcode #xfed1 "Prev_Virtual_Screen")
-(define-gtkcode #xfed2 "Next_Virtual_Screen")
-(define-gtkcode #xfed4 "Last_Virtual_Screen")
-(define-gtkcode #xfed5 "Terminate_Server")
-(define-gtkcode #xfe70 "AccessX_Enable")
-(define-gtkcode #xfe71 "AccessX_Feedback_Enable")
-(define-gtkcode #xfe72 "RepeatKeys_Enable")
-(define-gtkcode #xfe73 "SlowKeys_Enable")
-(define-gtkcode #xfe74 "BounceKeys_Enable")
-(define-gtkcode #xfe75 "StickyKeys_Enable")
-(define-gtkcode #xfe76 "MouseKeys_Enable")
-(define-gtkcode #xfe77 "MouseKeys_Accel_Enable")
-(define-gtkcode #xfe78 "Overlay1_Enable")
-(define-gtkcode #xfe79 "Overlay2_Enable")
-(define-gtkcode #xfe7a "AudibleBell_Enable")
-(define-gtkcode #xfee0 "Pointer_Left")
-(define-gtkcode #xfee1 "Pointer_Right")
-(define-gtkcode #xfee2 "Pointer_Up")
-(define-gtkcode #xfee3 "Pointer_Down")
-(define-gtkcode #xfee4 "Pointer_UpLeft")
-(define-gtkcode #xfee5 "Pointer_UpRight")
-(define-gtkcode #xfee6 "Pointer_DownLeft")
-(define-gtkcode #xfee7 "Pointer_DownRight")
-(define-gtkcode #xfee8 "Pointer_Button_Dflt")
-(define-gtkcode #xfee9 "Pointer_Button1")
-(define-gtkcode #xfeea "Pointer_Button2")
-(define-gtkcode #xfeeb "Pointer_Button3")
-(define-gtkcode #xfeec "Pointer_Button4")
-(define-gtkcode #xfeed "Pointer_Button5")
-(define-gtkcode #xfeee "Pointer_DblClick_Dflt")
-(define-gtkcode #xfeef "Pointer_DblClick1")
-(define-gtkcode #xfef0 "Pointer_DblClick2")
-(define-gtkcode #xfef1 "Pointer_DblClick3")
-(define-gtkcode #xfef2 "Pointer_DblClick4")
-(define-gtkcode #xfef3 "Pointer_DblClick5")
-(define-gtkcode #xfef4 "Pointer_Drag_Dflt")
-(define-gtkcode #xfef5 "Pointer_Drag1")
-(define-gtkcode #xfef6 "Pointer_Drag2")
-(define-gtkcode #xfef7 "Pointer_Drag3")
-(define-gtkcode #xfef8 "Pointer_Drag4")
-(define-gtkcode #xfefd "Pointer_Drag5")
-(define-gtkcode #xfef9 "Pointer_EnableKeys")
-(define-gtkcode #xfefa "Pointer_Accelerate")
-(define-gtkcode #xfefb "Pointer_DfltBtnNext")
-(define-gtkcode #xfefc "Pointer_DfltBtnPrev")
-(define-gtkcode #xfd01 "3270_Duplicate")
-(define-gtkcode #xfd02 "3270_FieldMark")
-(define-gtkcode #xfd03 "3270_Right2")
-(define-gtkcode #xfd04 "3270_Left2")
-(define-gtkcode #xfd05 "3270_BackTab")
-(define-gtkcode #xfd06 "3270_EraseEOF")
-(define-gtkcode #xfd07 "3270_EraseInput")
-(define-gtkcode #xfd08 "3270_Reset")
-(define-gtkcode #xfd09 "3270_Quit")
-(define-gtkcode #xfd0a "3270_PA1")
-(define-gtkcode #xfd0b "3270_PA2")
-(define-gtkcode #xfd0c "3270_PA3")
-(define-gtkcode #xfd0d "3270_Test")
-(define-gtkcode #xfd0e "3270_Attn")
-(define-gtkcode #xfd0f "3270_CursorBlink")
-(define-gtkcode #xfd10 "3270_AltCursor")
-(define-gtkcode #xfd11 "3270_KeyClick")
-(define-gtkcode #xfd12 "3270_Jump")
-(define-gtkcode #xfd13 "3270_Ident")
-(define-gtkcode #xfd14 "3270_Rule")
-(define-gtkcode #xfd15 "3270_Copy")
-(define-gtkcode #xfd16 "3270_Play")
-(define-gtkcode #xfd17 "3270_Setup")
-(define-gtkcode #xfd18 "3270_Record")
-(define-gtkcode #xfd19 "3270_ChangeScreen")
-(define-gtkcode #xfd1a "3270_DeleteWord")
-(define-gtkcode #xfd1b "3270_ExSelect")
-(define-gtkcode #xfd1c "3270_CursorSelect")
-(define-gtkcode #xfd1d "3270_PrintScreen")
-(define-gtkcode #xfd1e "3270_Enter")
 
 
 
-(define-gtkcode #x0030 "0")              ;U+0030 DIGIT ZERO
-(define-gtkcode #x0031 "1")              ;U+0031 DIGIT ONE
-(define-gtkcode #x0032 "2")              ;U+0032 DIGIT TWO
-(define-gtkcode #x0033 "3")              ;U+0033 DIGIT THREE
-(define-gtkcode #x0034 "4")              ;U+0034 DIGIT FOUR
-(define-gtkcode #x0035 "5")              ;U+0035 DIGIT FIVE
-(define-gtkcode #x0036 "6")              ;U+0036 DIGIT SIX
-(define-gtkcode #x0037 "7")              ;U+0037 DIGIT SEVEN
-(define-gtkcode #x0038 "8")              ;U+0038 DIGIT EIGHT
-(define-gtkcode #x0039 "9")              ;U+0039 DIGIT NINE
-(define-gtkcode #x0041 "A")              ;U+0041 LATIN CAPITAL LETTER A
-(define-gtkcode #x0042 "B")              ;U+0042 LATIN CAPITAL LETTER B
-(define-gtkcode #x0043 "C")              ;U+0043 LATIN CAPITAL LETTER C
-(define-gtkcode #x0044 "D")              ;U+0044 LATIN CAPITAL LETTER D
-(define-gtkcode #x0045 "E")              ;U+0045 LATIN CAPITAL LETTER E
-(define-gtkcode #x0046 "F")              ;U+0046 LATIN CAPITAL LETTER F
-(define-gtkcode #x0047 "G")              ;U+0047 LATIN CAPITAL LETTER G
-(define-gtkcode #x0048 "H")              ;U+0048 LATIN CAPITAL LETTER H
-(define-gtkcode #x0049 "I")              ;U+0049 LATIN CAPITAL LETTER I
-(define-gtkcode #x004a "J")              ;U+004A LATIN CAPITAL LETTER J
-(define-gtkcode #x004b "K")              ;U+004B LATIN CAPITAL LETTER K
-(define-gtkcode #x004c "L")              ;U+004C LATIN CAPITAL LETTER L
-(define-gtkcode #x004d "M")              ;U+004D LATIN CAPITAL LETTER M
-(define-gtkcode #x004e "N")              ;U+004E LATIN CAPITAL LETTER N
-(define-gtkcode #x004f "O")              ;U+004F LATIN CAPITAL LETTER O
-(define-gtkcode #x0050 "P")              ;U+0050 LATIN CAPITAL LETTER P
-(define-gtkcode #x0051 "Q")              ;U+0051 LATIN CAPITAL LETTER Q
-(define-gtkcode #x0052 "R")              ;U+0052 LATIN CAPITAL LETTER R
-(define-gtkcode #x0053 "S")              ;U+0053 LATIN CAPITAL LETTER S
-(define-gtkcode #x0054 "T")              ;U+0054 LATIN CAPITAL LETTER T
-(define-gtkcode #x0055 "U")              ;U+0055 LATIN CAPITAL LETTER U
-(define-gtkcode #x0056 "V")              ;U+0056 LATIN CAPITAL LETTER V
-(define-gtkcode #x0057 "W")              ;U+0057 LATIN CAPITAL LETTER W
-(define-gtkcode #x0058 "X")              ;U+0058 LATIN CAPITAL LETTER X
-(define-gtkcode #x0059 "Y")              ;U+0059 LATIN CAPITAL LETTER Y
-(define-gtkcode #x005a "Z")              ;U+005A LATIN CAPITAL LETTER Z
-(define-gtkcode #x0061 "a")              ;U+0061 LATIN SMALL LETTER A
-(define-gtkcode #x0062 "b")              ;U+0062 LATIN SMALL LETTER B
-(define-gtkcode #x0063 "c")              ;U+0063 LATIN SMALL LETTER C
-(define-gtkcode #x0064 "d")              ;U+0064 LATIN SMALL LETTER D
-(define-gtkcode #x0065 "e")              ;U+0065 LATIN SMALL LETTER E
-(define-gtkcode #x0066 "f")              ;U+0066 LATIN SMALL LETTER F
-(define-gtkcode #x0067 "g")              ;U+0067 LATIN SMALL LETTER G
-(define-gtkcode #x0068 "h")              ;U+0068 LATIN SMALL LETTER H
-(define-gtkcode #x0069 "i")              ;U+0069 LATIN SMALL LETTER I
-(define-gtkcode #x006a "j")              ;U+006A LATIN SMALL LETTER J
-(define-gtkcode #x006b "k")              ;U+006B LATIN SMALL LETTER K
-(define-gtkcode #x006c "l")              ;U+006C LATIN SMALL LETTER L
-(define-gtkcode #x006d "m")              ;U+006D LATIN SMALL LETTER M
-(define-gtkcode #x006e "n")              ;U+006E LATIN SMALL LETTER N
-(define-gtkcode #x006f "o")              ;U+006F LATIN SMALL LETTER O
-(define-gtkcode #x0070 "p")              ;U+0070 LATIN SMALL LETTER P
-(define-gtkcode #x0071 "q")              ;U+0071 LATIN SMALL LETTER Q
-(define-gtkcode #x0072 "r")              ;U+0072 LATIN SMALL LETTER R
-(define-gtkcode #x0073 "s")              ;U+0073 LATIN SMALL LETTER S
-(define-gtkcode #x0074 "t")              ;U+0074 LATIN SMALL LETTER T
-(define-gtkcode #x0075 "u")              ;U+0075 LATIN SMALL LETTER U
-(define-gtkcode #x0076 "v")              ;U+0076 LATIN SMALL LETTER V
-(define-gtkcode #x0077 "w")              ;U+0077 LATIN SMALL LETTER W
-(define-gtkcode #x0078 "x")              ;U+0078 LATIN SMALL LETTER X
-(define-gtkcode #x0079 "y")              ;U+0079 LATIN SMALL LETTER Y
-(define-gtkcode #x007a "z")              ;U+007A LATIN SMALL LETTER Z
+;;; WEIRD AND UNTESTED
+#|
 (define-gtkcode #x00a0 "nobreakspace")   ;U+00A0 NO-BREAK SPACE
 (define-gtkcode #x00a1 "exclamdown")  ;U+00A1 INVERTED EXCLAMATION MARK
 (define-gtkcode #x00a2 "cent")           ;U+00A2 CENT SIGN
@@ -625,6 +470,145 @@
 (define-gtkcode #x03fd "utilde") ;U+0169 LATIN SMALL LETTER U WITH TILDE
 (define-gtkcode #x03fe "umacron") ;U+016B LATIN SMALL LETTER U WITH MACRON
 
+(define-gtkcode #xff7e "Mode_switch")    ;Character set switch
+(define-gtkcode #xff7e "script_switch")  ;Alias for mode_switch
+
+
+(define-gtkcode #xfe01 "ISO_Lock")
+(define-gtkcode #xfe02 "ISO_Level2_Latch")
+(define-gtkcode #xfe03 "ISO_Level3_Shift")
+(define-gtkcode #xfe04 "ISO_Level3_Latch")
+(define-gtkcode #xfe05 "ISO_Level3_Lock")
+(define-gtkcode #xff7e "ISO_Group_Shift") ;Alias for mode_switch
+(define-gtkcode #xfe06 "ISO_Group_Latch")
+(define-gtkcode #xfe07 "ISO_Group_Lock")
+(define-gtkcode #xfe08 "ISO_Next_Group")
+(define-gtkcode #xfe09 "ISO_Next_Group_Lock")
+(define-gtkcode #xfe0a "ISO_Prev_Group")
+(define-gtkcode #xfe0b "ISO_Prev_Group_Lock")
+(define-gtkcode #xfe0c "ISO_First_Group")
+(define-gtkcode #xfe0d "ISO_First_Group_Lock")
+(define-gtkcode #xfe0e "ISO_Last_Group")
+(define-gtkcode #xfe0f "ISO_Last_Group_Lock")
+(define-gtkcode #xfe20 "ISO_Left_Tab")
+(define-gtkcode #xfe21 "ISO_Move_Line_Up")
+(define-gtkcode #xfe22 "ISO_Move_Line_Down")
+(define-gtkcode #xfe23 "ISO_Partial_Line_Up")
+(define-gtkcode #xfe24 "ISO_Partial_Line_Down")
+(define-gtkcode #xfe25 "ISO_Partial_Space_Left")
+(define-gtkcode #xfe26 "ISO_Partial_Space_Right")
+(define-gtkcode #xfe27 "ISO_Set_Margin_Left")
+(define-gtkcode #xfe28 "ISO_Set_Margin_Right")
+(define-gtkcode #xfe29 "ISO_Release_Margin_Left")
+(define-gtkcode #xfe2a "ISO_Release_Margin_Right")
+(define-gtkcode #xfe2b "ISO_Release_Both_Margins")
+(define-gtkcode #xfe2c "ISO_Fast_Cursor_Left")
+(define-gtkcode #xfe2d "ISO_Fast_Cursor_Right")
+(define-gtkcode #xfe2e "ISO_Fast_Cursor_Up")
+(define-gtkcode #xfe2f "ISO_Fast_Cursor_Down")
+(define-gtkcode #xfe30 "ISO_Continuous_Underline")
+(define-gtkcode #xfe31 "ISO_Discontinuous_Underline")
+(define-gtkcode #xfe32 "ISO_Emphasize")
+(define-gtkcode #xfe33 "ISO_Center_Object")
+(define-gtkcode #xfe34 "ISO_Enter")
+(define-gtkcode #xfe50 "dead_grave")
+(define-gtkcode #xfe51 "dead_acute")
+(define-gtkcode #xfe52 "dead_circumflex")
+(define-gtkcode #xfe53 "dead_tilde")
+(define-gtkcode #xfe54 "dead_macron")
+(define-gtkcode #xfe55 "dead_breve")
+(define-gtkcode #xfe56 "dead_abovedot")
+(define-gtkcode #xfe57 "dead_diaeresis")
+(define-gtkcode #xfe58 "dead_abovering")
+(define-gtkcode #xfe59 "dead_doubleacute")
+(define-gtkcode #xfe5a "dead_caron")
+(define-gtkcode #xfe5b "dead_cedilla")
+(define-gtkcode #xfe5c "dead_ogonek")
+(define-gtkcode #xfe5d "dead_iota")
+(define-gtkcode #xfe5e "dead_voiced_sound")
+(define-gtkcode #xfe5f "dead_semivoiced_sound")
+(define-gtkcode #xfe60 "dead_belowdot")
+(define-gtkcode #xfe61 "dead_hook")
+(define-gtkcode #xfe62 "dead_horn")
+(define-gtkcode #xfed0 "First_Virtual_Screen")
+(define-gtkcode #xfed1 "Prev_Virtual_Screen")
+(define-gtkcode #xfed2 "Next_Virtual_Screen")
+(define-gtkcode #xfed4 "Last_Virtual_Screen")
+(define-gtkcode #xfed5 "Terminate_Server")
+(define-gtkcode #xfe70 "AccessX_Enable")
+(define-gtkcode #xfe71 "AccessX_Feedback_Enable")
+(define-gtkcode #xfe72 "RepeatKeys_Enable")
+(define-gtkcode #xfe73 "SlowKeys_Enable")
+(define-gtkcode #xfe74 "BounceKeys_Enable")
+(define-gtkcode #xfe75 "StickyKeys_Enable")
+(define-gtkcode #xfe76 "MouseKeys_Enable")
+(define-gtkcode #xfe77 "MouseKeys_Accel_Enable")
+(define-gtkcode #xfe78 "Overlay1_Enable")
+(define-gtkcode #xfe79 "Overlay2_Enable")
+(define-gtkcode #xfe7a "AudibleBell_Enable")
+(define-gtkcode #xfee0 "Pointer_Left")
+(define-gtkcode #xfee1 "Pointer_Right")
+(define-gtkcode #xfee2 "Pointer_Up")
+(define-gtkcode #xfee3 "Pointer_Down")
+(define-gtkcode #xfee4 "Pointer_UpLeft")
+(define-gtkcode #xfee5 "Pointer_UpRight")
+(define-gtkcode #xfee6 "Pointer_DownLeft")
+(define-gtkcode #xfee7 "Pointer_DownRight")
+(define-gtkcode #xfee8 "Pointer_Button_Dflt")
+(define-gtkcode #xfee9 "Pointer_Button1")
+(define-gtkcode #xfeea "Pointer_Button2")
+(define-gtkcode #xfeeb "Pointer_Button3")
+(define-gtkcode #xfeec "Pointer_Button4")
+(define-gtkcode #xfeed "Pointer_Button5")
+(define-gtkcode #xfeee "Pointer_DblClick_Dflt")
+(define-gtkcode #xfeef "Pointer_DblClick1")
+(define-gtkcode #xfef0 "Pointer_DblClick2")
+(define-gtkcode #xfef1 "Pointer_DblClick3")
+(define-gtkcode #xfef2 "Pointer_DblClick4")
+(define-gtkcode #xfef3 "Pointer_DblClick5")
+(define-gtkcode #xfef4 "Pointer_Drag_Dflt")
+(define-gtkcode #xfef5 "Pointer_Drag1")
+(define-gtkcode #xfef6 "Pointer_Drag2")
+(define-gtkcode #xfef7 "Pointer_Drag3")
+(define-gtkcode #xfef8 "Pointer_Drag4")
+(define-gtkcode #xfefd "Pointer_Drag5")
+(define-gtkcode #xfef9 "Pointer_EnableKeys")
+(define-gtkcode #xfefa "Pointer_Accelerate")
+(define-gtkcode #xfefb "Pointer_DfltBtnNext")
+(define-gtkcode #xfefc "Pointer_DfltBtnPrev")
+(define-gtkcode #xfd01 "3270_Duplicate")
+(define-gtkcode #xfd02 "3270_FieldMark")
+(define-gtkcode #xfd03 "3270_Right2")
+(define-gtkcode #xfd04 "3270_Left2")
+(define-gtkcode #xfd05 "3270_BackTab")
+(define-gtkcode #xfd06 "3270_EraseEOF")
+(define-gtkcode #xfd07 "3270_EraseInput")
+(define-gtkcode #xfd08 "3270_Reset")
+(define-gtkcode #xfd09 "3270_Quit")
+(define-gtkcode #xfd0a "3270_PA1")
+(define-gtkcode #xfd0b "3270_PA2")
+(define-gtkcode #xfd0c "3270_PA3")
+(define-gtkcode #xfd0d "3270_Test")
+(define-gtkcode #xfd0e "3270_Attn")
+(define-gtkcode #xfd0f "3270_CursorBlink")
+(define-gtkcode #xfd10 "3270_AltCursor")
+(define-gtkcode #xfd11 "3270_KeyClick")
+(define-gtkcode #xfd12 "3270_Jump")
+(define-gtkcode #xfd13 "3270_Ident")
+(define-gtkcode #xfd14 "3270_Rule")
+(define-gtkcode #xfd15 "3270_Copy")
+(define-gtkcode #xfd16 "3270_Play")
+(define-gtkcode #xfd17 "3270_Setup")
+(define-gtkcode #xfd18 "3270_Record")
+(define-gtkcode #xfd19 "3270_ChangeScreen")
+(define-gtkcode #xfd1a "3270_DeleteWord")
+(define-gtkcode #xfd1b "3270_ExSelect")
+(define-gtkcode #xfd1c "3270_CursorSelect")
+(define-gtkcode #xfd1d "3270_PrintScreen")
+(define-gtkcode #xfd1e "3270_Enter")
+
+
+
 (define-gtkcode #x13bc "OE")          ;U+0152 LATIN CAPITAL LIGATURE OE
 (define-gtkcode #x13bd "oe")            ;U+0153 LATIN SMALL LIGATURE OE
 (define-gtkcode #x13be "Ydiaeresis") ;U+0178 LATIN CAPITAL LETTER Y WITH DIAERESIS
@@ -697,7 +681,6 @@
 (define-gtkcode #x04dd "kana_N")         ;U+30F3 KATAKANA LETTER N
 (define-gtkcode #x04de "voicedsound") ;U+309B KATAKANA-HIRAGANA VOICED SOUND MARK
 (define-gtkcode #x04df "semivoicedsound") ;U+309C KATAKANA-HIRAGANA SEMI-VOICED SOUND MARK
-(define-gtkcode #xff7e "kana_switch")    ;Alias for mode_switch
 
 (define-gtkcode #x08bc "lessthanequal")  ;U+2264 LESS-THAN OR EQUAL TO
 (define-gtkcode #x08bd "notequal")       ;U+2260 NOT EQUAL TO
@@ -851,15 +834,7 @@
 (define-gtkcode #x0bda "leftshoe")       ;(U+2282 SUBSET OF)
 (define-gtkcode #x0bdc "lefttack")       ;U+22A2 RIGHT TACK
 (define-gtkcode #x0bfc "righttack")      ;U+22A3 LEFT TAC
+|#
 
 
-(define-gtkcode #x0eff "Korean_Won")     ;(U+20A9 WON SIGN)
-
-(define-gtkcode #x20ac "EuroSign")       ;U+20AC EURO SIGN
-
-(defun modifier-p (gtkcode)
-  "check if the gtkcode is a modifier (shift, etc)"
-  ;; TODO: these should probably be mapped individually...
-  (and (>= gtkcode #xffe1)
-       (<= gtkcode #xffee)))
 

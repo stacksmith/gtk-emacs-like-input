@@ -30,8 +30,8 @@
 	   ;; keymap.lisp
 	   :bind
 	   :new-keymap 
-	   :keymap-symbol-at
-	   :keymap-keystr-at
+	   :keymap-bval-at
+	   :keymap-keyseq-at
 	   :keymap-match
 	   :keymap-exact-match
 	  )
