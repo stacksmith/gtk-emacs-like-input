@@ -4,7 +4,8 @@
 
 GTK-EMACS-LIKE-INPUT, eli for short, is a library that adds an emacs-like command bar to your arsenal of cl-cffi-gtk widgets.  It is emacs-like in spirit only, and has little to do with emacs, really.  But it makes it easy to bind keystrokes to commands, and lets you enjoy the familiar interface.
 
-eli is a work in progress, and changes are being made to the interface.
+
+eli is licenced under the BSD license, and is a work in progress - changes are being made daily (as of Sept 2016).
 
 ## Quickstart
 
