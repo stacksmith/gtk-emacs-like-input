@@ -67,9 +67,13 @@
     (unless match ;if match not passed to us, calculate it
       (unless (zerop (length buffer)) ;if buffer length >0
 	(setf match (keymap-match keymap-top buffer))))
-      ;; match now nil, list, or a hit
-
-    (gtk-label-set-text left (buffer->string buffer) )
+    ;; match now nil, list, or a hit
+    ;;    (gtk-label-set-text left (buffer->string buffer) )
+    (gtk-label-set-markup
+     left (if match
+	       (html-encode:encode-for-tt (buffer->string buffer))
+	      (format nil  "<span background=\"#FFFF00\">~A</span>"  (html-encode:encode-for-tt (buffer->string buffer)))))
+    
     (gtk-label-set-text middle "")
     (gtk-label-set-text right
 			(if (consp match)
@@ -130,7 +134,7 @@ processing"
   ;;TODO: perhaps a separate mechanism is called for instead of creating a damn array every 
   (with-slots (keymap-instant key) eli
     (let ((match (keymap-exact-match keymap-instant (vector key))))
-      (format t "INSTANT MATCH ~A~%" match)
+;      (format t "INSTANT MATCH ~A~%" match)
       (when match (funcall match eli)))))
 
 (defun input-keystroke (eli)
@@ -190,7 +194,13 @@ processing"
 (defun inst-cancel (eli)
   "Cancel command, reset"
   (reset eli :full t ))
-
+;;;
+;;; Tab completion.
+;;;
+;;; This is a little complicated. Basically, if there are partial matches,
+;;; we find the longest string which starts all the mathches.  We then
+;;; inject the keys into dispatch-key, as if they were typed. If there
+;;; is a <RET>, we stop before it, to avoid trouble.
 (defun inst-tab (eli)
   (with-slots (keymap-top buffer key) eli
     (let ((match (keymap-match keymap-top buffer)))
@@ -209,9 +219,8 @@ processing"
 	  (format t "xx~A~%" tab-by)
 	  (loop for i from buf-len upto (1- tab-by)
 	     for gtkkey = (elt first-keystr i)
-	     unless (= gtkkey #xff0d)
+	     until (= gtkkey #xff0d) ;terminate at return
 	     do
-	       (format t "Inserting ~A~%" gtkkey)
 	       (setf key gtkkey)
 	       (dispatch-key eli) ;watch out, re-entering! gtk-test-widget-send-key ...
 ;	       (vector-push-extend gtkkey buffer)
@@ -257,7 +266,8 @@ processing"
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
     (setf *kkk* keymap-top)
-    (bind keymap-top  "<C-a>abracadabra<RET>" #'fun1)
+    (bind keymap-top  "<C-a>abracadabra<RET>what" #'fun1)
+    (bind keymap-top  "abracadabra<RET>what" #'fun1)
     (bind keymap-top  "<C-a>abracadillo<RET>" #'fun2)
     (bind keymap-top  "<C-a>abracddillo<RET>" #'fun2)
     (bind keymap-top  "<C-c>" 'fun3) ;interactive - ' not #'
