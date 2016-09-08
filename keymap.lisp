@@ -19,7 +19,7 @@
 		(loop for name across (keymap-keystrs struct)
 		   for i from 0
 		   for symbol across (keymap-symbols struct) do
-		     (format stream "~A: \"~A\" '~A~%" i name symbol)))))
+		     (format stream "~A: \"~A\" '~A~%" i (keys->string name) symbol)))))
   keystrs symbols)
 (defun new-keymap ()
   (make-keymap :keystrs (make-array 5 :fill-pointer 0 :adjustable t)
@@ -37,10 +37,15 @@
   "Return keystr at index of keymap"
   (elt (keymap-keystrs keymap) index))
 
-(defun bind (keymap keystr symbol)
-  "bind a keystr to a symbol in keymap"
-  (vector-push-extend keystr (keymap-keystrs keymap))
-  (vector-push-extend symbol (keymap-symbols keymap)))
+
+
+
+(defun bind (keymap str symbol)
+  "bind a str to a symbol in keymap"
+  (let* ((keylist (parse-keystr str))
+	 (keyarr (make-array (length keylist) :initial-contents keylist)))
+    (vector-push-extend keyarr (keymap-keystrs keymap))
+    (vector-push-extend symbol (keymap-symbols keymap))))
 
 (defun keymap-match (map keystr)
   "Search for a match for a keystr in a keymap.  Return one of:
@@ -51,6 +56,7 @@
     (loop for i from (keymap-high-index map) downto 0
        for k = (elt (keymap-keystrs map) i)
        for mismatch = (mismatch keystr k)
+	 
        unless mismatch return (keymap-symbol-at map i) end ;nil mismatch = actual match
        if (>=  mismatch keystr-length) collect i ;collect partials
 	 )))
@@ -59,9 +65,7 @@
   "return matching symbol or nil"
   (loop for i from (keymap-high-index map) downto 0 ;backwards
      for k = (elt (keymap-keystrs map) i)
-     when (equal keystr k)
+     when (equalp keystr k)
        do (return (keymap-symbol-at map i))
-     finally (return nil))
-    
-  )
+     finally (return nil)))
 

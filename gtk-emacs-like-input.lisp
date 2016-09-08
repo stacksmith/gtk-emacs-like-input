@@ -110,7 +110,7 @@
   "Attempt a dispatch on current keystr."
   (with-slots (buffer interactive key keymap-top) eli
     (vector-push-extend key buffer)	;append key to buffer
-    (let ((match (keymap-match keymap-top (buffer->string buffer))))
+    (let ((match (keymap-match keymap-top buffer)))
       (if (consp match)
 	  (progn (format t "----~%")
 		 (loop for i in match do (format t "~A~%" (keymap-keystr-at keymap-top i)))
@@ -134,8 +134,9 @@
 (defun dispatch-instant (eli)
   "if key is bound as instant, invoke binding.  Otherwise, return nil for further
 processing"
+  ;;TODO: perhaps a separate mechanism is called for instead of creating a damn array every 
   (with-slots (keymap-instant key) eli
-    (let ((match (keymap-exact-match keymap-instant (key->string key))))
+    (let ((match (keymap-exact-match keymap-instant (vector key))))
       (when match (funcall match eli)))))
 
 (defun input-keystroke (eli)
@@ -179,11 +180,11 @@ processing"
       (setf keymap-top  (new-keymap)
 	    keymap-instant (new-keymap))
       ;; and instant key processing
-      (bind keymap-instant  "C-g" #'inst-cancel)
-      (bind keymap-instant "BS" #'inst-back-up)
-      (bind keymap-instant "TAB" #'inst-tab)
+      (bind keymap-instant "<C-g>" #'inst-cancel)
+      (bind keymap-instant "<BS>" #'inst-back-up)
+      (bind keymap-instant "<TAB>" #'inst-tab)
       ; default keystrokes
-      (bind keymap-top  "C-xC-c" #'app-quit) 
+      (bind keymap-top  "<C-x><C-c>" #'app-quit) 
 )
 
     
@@ -235,9 +236,9 @@ processing"
 
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
-    (bind keymap-top  "C-aabracadabraRET" #'fun1)
-    (bind keymap-top  "C-aabracadilloRET" #'fun2)
-    (bind keymap-top  "C-c" 'fun3) ;interactive - ' not #'
+    (bind keymap-top  "<C-a>abracadabra<RET>" #'fun1)
+    (bind keymap-top  "<C-a>abracadillo<RET>" #'fun2)
+    (bind keymap-top  "<C-c>" 'fun3) ;interactive - ' not #'
 ))
     
 

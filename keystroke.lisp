@@ -37,16 +37,27 @@
        (code-char (key-val key))))
 
 (defun write-key (key stream)
-  "print the stringified key to stream"
-  (when (logbitp mod-control-bit key) (write-sequence "C-" stream ))
-  (when (logbitp mod-meta-bit    key) (write-sequence "M-" stream ))
-  (when (logbitp mod-alt-bit     key) (write-sequence "A-" stream ))
-  (when (logbitp mod-shift-bit   key) (write-sequence "S-" stream ))
-  (when (logbitp mod-super-bit   key) (write-sequence "s-" stream ))
-  (when (logbitp mod-hyper-bit   key) (write-sequence "H-" stream ))
-  (write-sequence (gtkcode->gtkname (key-val key)) stream)
-  ;(unless (zerop (key-mod key)) (write-char #\space stream))
+  (let* ((name (gtkcode->gtkname (key-val key)))
+	 (brace (or (not (zerop (key-mod key)))
+		    (> (length name) 1))))
+    (when brace (write-char #\< stream))
+    "print the stringified key to stream"
+    (when (logbitp mod-control-bit key) (write-sequence "C-" stream ))
+    (when (logbitp mod-meta-bit    key) (write-sequence "M-" stream ))
+    (when (logbitp mod-alt-bit     key) (write-sequence "A-" stream ))
+    (when (logbitp mod-shift-bit   key) (write-sequence "S-" stream ))
+    (when (logbitp mod-super-bit   key) (write-sequence "s-" stream ))
+    (when (logbitp mod-hyper-bit   key) (write-sequence "H-" stream ))
+    (write-sequence name stream )
+    (when brace (write-char #\> stream)))
   key)
+
+(defun write-keys (keys stream)
+  (loop for key across keys do
+       (write-key key stream)))
+  
+(defun keys->string (keys)
+  (with-output-to-string (s) (write-keys keys s)))
 
 (defun key->string (key)
   "Convert a key into a string representation"
@@ -76,33 +87,13 @@
       (:mod1-mask    (incf val MOD-META-MASK))))
   val)
 
-(defun parse-gtkkey-p (str start end key)
-  "parse the gtkkey fragment of a string return updated key"
-  (let ((k (gtkname->gtkcode  (subseq str start end))))
-    (unless k  (error 'eli-error :message "parse-key: invalid string" :value str))
-    (+ key k)))
 
-(defun parse-gtkkey-1 (str index)
-  "parse a string for a key description, and return key and index"
-  (let ((c (elt str index))
-	(key 0))
-    (if (char= c #\<)
-	(progn
-	  (incf index 1) ;skip <
-	  (loop for i upto 10
-	     for c1 = (elt str index)
-	     for c2 = (elt str (1+ index))
-	     while (char= #\- c2) do
-	       (incf index 2) ;skip the modifier pair
-	       (incf key (char->modmask c1)))
-	  ;;find ending >
-	  (let ((end (position #\> str :start (1+ index))))
-	    (values (parse-gtkkey str index end key) (1+ end))))
-	(values (parse-gtkkey str index (1+ index) key) (1+ index)))))
 ;;;
 ;;; A gtkkey is represented bye a string by one of:
 ;;; - a single character i.e. "A"
 ;;; - a valid gtkname inside angle braces like <RET> (see keysyms.lisp)
+;;; - a valid gtkname inside angle braces, preceded by a modifier like
+;;;     "<M-RET>
 ;;; Pay attention to lisp escapes, and additional escape for < outside <>:
 ;;; "<>>" is >
 ;;; "<\"" is "
@@ -114,7 +105,6 @@
   "read a textual character representation like <C-M-x> and return key"
   (let ((key 0)
 	(c (read-char stream)))
-    (format t "---~c~%" c)
     (setf (fill-pointer buf) 0)
     (case c
       (#\\ (vector-push (read-char stream) buf)) ;escapes in 
@@ -141,12 +131,19 @@
     key))
 
 (defun parse-keystr (string)
+  "parse a keystring into a list of gtkkeys"
   (with-input-from-string (in string)
     (let ((buffer (make-array 32 :element-type 'character :fill-pointer 0 :adjustable t) ))
       (loop while (listen in)
-	 collect (key-reader in :buf buffer)))
-    )
-  )
+	 collect (key-reader in :buf buffer)))))
+
+
+(defun print-keyvec (keyvec)
+  
+
+)
+
+
 ;;; move to dead-code.
 (defun key-reader-old (stream char)
   "read textual character representations like <C-M-x> and return keys"
@@ -171,6 +168,30 @@
 	  (incf key gtkcode)
 	  (error "~A is not a valid gtk key name" name)))
     key))
+
+(defun parse-gtkkey-p (str start end key)
+  "parse the gtkkey fragment of a string return updated key"
+  (let ((k (gtkname->gtkcode  (subseq str start end))))
+    (unless k  (error 'eli-error :message "parse-key: invalid string" :value str))
+    (+ key k)))
+
+(defun parse-gtkkey-1 (str index)
+  "parse a string for a key description, and return key and index"
+  (let ((c (elt str index))
+	(key 0))
+    (if (char= c #\<)
+	(progn
+	  (incf index 1) ;skip <
+	  (loop for i upto 10
+	     for c1 = (elt str index)
+	     for c2 = (elt str (1+ index))
+	     while (char= #\- c2) do
+	       (incf index 2) ;skip the modifier pair
+	       (incf key (char->modmask c1)))
+	  ;;find ending >
+	  (let ((end (position #\> str :start (1+ index))))
+	    (values (parse-gtkkey str index end key) (1+ end))))
+	(values (parse-gtkkey str index (1+ index) key) (1+ index)))))
 ;(set-macro-character #\< #'key-reader)
 
 
