@@ -13,5 +13,20 @@
 	     while j)
           default-value))))
 
+(defun html-escape (string)
+  (declare (simple-string string))
+  (let ((output (make-array (truncate (length string) 2/3)
+                            :element-type 'character
+                            :adjustable t
+                            :fill-pointer 0)))
+    (with-output-to-string (out output)
+      (loop for char across string
+            do (case char
+                 ((#\&) (write-string "&amp;" out))
+                 ((#\<) (write-string "&lt;" out))
+                 ((#\>) (write-string "&gt;" out))
+                 (t (write-char char out)))))
+    (coerce output 'simple-string)))
+
 
 

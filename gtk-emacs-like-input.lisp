@@ -71,8 +71,9 @@
     ;;    (gtk-label-set-text left (buffer->string buffer) )
     (gtk-label-set-markup
      left (if match
-	       (html-encode:encode-for-tt (buffer->string buffer))
-	      (format nil  "<span background=\"#FFFF00\">~A</span>"  (html-encode:encode-for-tt (buffer->string buffer)))))
+	       (html-escape (buffer->string buffer))
+	       (format nil  "<span background=\"#FFFF00\">~A</span>"
+		       (html-escape (buffer->string buffer)))))
     
     (gtk-label-set-text middle "")
     (gtk-label-set-text right
@@ -113,7 +114,6 @@
   "Attempt a dispatch on current keystr."
   (with-slots (buffer interactive key keymap-top match) eli
     (vector-push-extend key buffer)	;append key to buffer
-    (setf *bbb* buffer) ;;;KILL
     (let ((match (keymap-match keymap-top buffer)))
       (render eli :match match)
       
@@ -260,12 +260,8 @@ processing"
      t))
   )
 
-(defparameter *kkk* nil)
-(defparameter *bbb* nil
-  )
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
-    (setf *kkk* keymap-top)
     (bind keymap-top  "<C-a>abracadabra<RET>what" #'fun1)
     (bind keymap-top  "abracadabra<RET>what" #'fun1)
     (bind keymap-top  "<C-a>abracadillo<RET>" #'fun2)

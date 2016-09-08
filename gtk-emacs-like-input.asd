@@ -4,8 +4,7 @@
   :description "Describe gtk-emacs-like-input here"
   :author "Stacksmith <fpgasm@apple2.x10.mx>"
   :license "MIT"
-  :depends-on (#:cl-cffi-gtk
-	       #:html-encode)
+  :depends-on (#:cl-cffi-gtk)
   :serial t
   :components ((:file "package")
 	       (:file "conditions")
