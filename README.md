@@ -32,9 +32,9 @@ fun1 must be defined like this
 (defun fun1 (eli)
   (format t "Fun1"))
 ```
-eli is a structure full of eli-related stuff that will allow you to do all kinds of magic.
+eli is a structure full of eli-related stuff that will allow you to do all kinds of magic.  I will expand on that later; or look for yourself at the top of `gtk-emacs-like-input.lisp`
 
-Binding a symbol, creates an 'interactive' function.  Such a function takes over the keyboard handling and interacts with the user.  Interactive functions are slightly more complicated: they get passed an eli structure and a keyword indicating what stage of processing is requested: :initialize, :process and :finalize.  :process means athat a new key is sitting in (eli-key eli).  The other stages give you a chance to set up and break down whatever you need to do.
+Binding a symbol makes the function 'interactive'.  Such a function takes over the keyboard handling and interacts with the user.  Interactive functions are slightly more complicated: they get passed an eli structure and a keyword indicating what stage of processing is requested: :initialize, :process and :finalize.  :process means that a new key is sitting in (eli-key eli).  The other stages give you a chance to set up and break down.
 
 Interactive functions also return a value - nil to let gtk continue processing the key or t if the processing is complete.
 Here is a working example that allows text entry right in the bar:
@@ -45,11 +45,12 @@ Here is a working example that allows text entry right in the bar:
   (case stage
     (:initialize (use-entry eli t)  ;open a text entry box
 	t) ;done processing
-    (:process
+    (:process ;in real life you will monitor keystrokes 
+	 ;; and call reset to exit after a <RET>, for instance...
      (format t "fun3: key ~A~%" (eli-key eli) )
      nil ;let gtk work with the entry editor...
      )
-    (:finalize
+    (:finalize 
      (use-entry eli nil)
      t))
   )
