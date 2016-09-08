@@ -56,7 +56,6 @@
     (loop for i from (keymap-high-index map) downto 0
        for k = (elt (keymap-keystrs map) i)
        for mismatch = (mismatch keystr k)
-	 
        unless mismatch return (keymap-symbol-at map i) end ;nil mismatch = actual match
        if (>=  mismatch keystr-length) collect i ;collect partials
 	 )))

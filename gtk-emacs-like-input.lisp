@@ -16,7 +16,7 @@
   key            ;; active key
   interactive    ;; interactive function in control
   window         ;; top window
-
+ 
 )
 ;;; Key processing:
 ;;;
@@ -64,18 +64,17 @@
 (defun render (eli &key (match nil))
   "Visually update the information in the bar"
   (with-slots (buffer keymap-top left middle right) eli
-    (let ((keystr(buffer->string buffer) ))
-      (format t "RENDER ~A~%" keystr)
-      (unless match ;if match not passed to us, calculate it
-	(unless (zerop (length keystr)) ;if buffer length >0
-	  (setf match (keymap-match keymap-top keystr))))
+    (unless match ;if match not passed to us, calculate it
+      (unless (zerop (length buffer)) ;if buffer length >0
+	(setf match (keymap-match keymap-top buffer))))
       ;; match now nil, list, or a hit
-      (gtk-label-set-text left keystr)
-      (gtk-label-set-text middle "")
-      (gtk-label-set-text right
-			  (if (consp match)
-			      (format nil "~A matches" (length match))
-			      (format nil ""))))))
+
+    (gtk-label-set-text left (buffer->string buffer) )
+    (gtk-label-set-text middle "")
+    (gtk-label-set-text right
+			(if (consp match)
+			    (format nil "~A matches" (length match))
+			    (format nil "")))))
 
 (defun reset (eli &key (full nil))
   (with-slots (instance buffer entry left middle right interactive) eli
@@ -106,18 +105,12 @@
 	  (gtk-widget-show middle)))))
 
     
-(defun dispatch-command (eli)
+(defun dispatch-key (eli)
   "Attempt a dispatch on current keystr."
-  (with-slots (buffer interactive key keymap-top) eli
+  (with-slots (buffer interactive key keymap-top match) eli
     (vector-push-extend key buffer)	;append key to buffer
+    (setf *bbb* buffer) ;;;KILL
     (let ((match (keymap-match keymap-top buffer)))
-      (if (consp match)
-	  (progn (format t "----~%")
-		 (loop for i in match do (format t "~A~%" (keymap-keystr-at keymap-top i)))
-		 (format t "++++~%"))
-	  
-	  )
-      
       (render eli :match match)
       
       (typecase match
@@ -137,6 +130,7 @@ processing"
   ;;TODO: perhaps a separate mechanism is called for instead of creating a damn array every 
   (with-slots (keymap-instant key) eli
     (let ((match (keymap-exact-match keymap-instant (vector key))))
+      (format t "INSTANT MATCH ~A~%" match)
       (when match (funcall match eli)))))
 
 (defun input-keystroke (eli)
@@ -145,7 +139,7 @@ processing"
     (unless (dispatch-instant eli)
       (if interactive
 	  (funcall interactive eli :process) ;returns nil/t to process keys in gtk
-	  (dispatch-command eli) ;otherwise, internal dispatch
+	  (dispatch-key eli) ;otherwise, internal dispatch
 	  ))))
 
 (defun on-key-press (widget event)
@@ -198,9 +192,33 @@ processing"
   (reset eli :full t ))
 
 (defun inst-tab (eli)
-  (declare (ignore eli))
-  (format t "TAB...~%")
-  )
+  (with-slots (keymap-top buffer key) eli
+    (let ((match (keymap-match keymap-top buffer)))
+      (when (consp match)
+	;; determine if all matches have a common beginning sequence
+	(let* ((first-keystr (keymap-keystr-at keymap-top (first match)))
+	       (buf-len (length buffer))
+	       (tab-by
+		(if (cdr match)
+		    (loop for i in (cdr match) ;loop for all matches but first
+		       for ks = (keymap-keystr-at keymap-top i) ;get keystrs
+		       with ref = first-keystr
+		       minimize (mismatch ks ref :start1 buf-len :start2 buf-len))
+		    (length first-keystr))))
+	  ;;insert keys
+	  (format t "xx~A~%" tab-by)
+	  (loop for i from buf-len upto (1- tab-by)
+	     for gtkkey = (elt first-keystr i)
+	     unless (= gtkkey #xff0d)
+	     do
+	       (format t "Inserting ~A~%" gtkkey)
+	       (setf key gtkkey)
+	       (dispatch-key eli) ;watch out, re-entering! gtk-test-widget-send-key ...
+;	       (vector-push-extend gtkkey buffer)
+	       ))))
+    (render eli)
+    t))
+
 (defun inst-back-up (eli)
   "instant. BS the last keystroke"
   (with-slots (buffer interactive) eli
@@ -233,11 +251,15 @@ processing"
      t))
   )
 
-
+(defparameter *kkk* nil)
+(defparameter *bbb* nil
+  )
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
+    (setf *kkk* keymap-top)
     (bind keymap-top  "<C-a>abracadabra<RET>" #'fun1)
     (bind keymap-top  "<C-a>abracadillo<RET>" #'fun2)
+    (bind keymap-top  "<C-a>abracddillo<RET>" #'fun2)
     (bind keymap-top  "<C-c>" 'fun3) ;interactive - ' not #'
 ))
     
