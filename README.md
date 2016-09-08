@@ -9,6 +9,7 @@ eli is a work in progress, and changes are being made to the interface.
 ## Quickstart
 
 To add eli to your application, do something along the lines of
+
 ```common lisp
  (let* ((eli (make-eli window))) ; create eli for this top window
         (bar (eli-bar eli))      ; get the bar widget
