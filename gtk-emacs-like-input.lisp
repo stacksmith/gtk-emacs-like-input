@@ -59,33 +59,45 @@
 
 (defun buffer-append-key (eli)
   (with-slots (key buffer keymap-top match) eli
-    (vector-push-extend key buffer) 	        ;;append key to buffer
-    (setf match (keymap-match keymap-top buffer))) ;and update match
-  (render eli))
+    (vector-push-extend key buffer)) 	        ;;append key to buffer
+  (buffer-process eli))
 
 (defun buffer-bs (eli)
   (with-slots (buffer keymap-top match) eli
-    (vector-pop buffer)
-    (setf match (keymap-match keymap-top buffer)))
-  (render eli))
+    (vector-pop buffer))
+  (buffer-process eli))
 
 (defun buffer-reset (eli)
   (with-slots (buffer keymap-top match) eli
-    (setf (fill-pointer buffer) 0)
-    (setf match (keymap-match keymap-top buffer)))
-  (render eli))
+    (setf (fill-pointer buffer) 0))
+  (buffer-process eli))
 
-(defun buffer-set (eli keyseq &key (append nil) (start 0) (end (length keyseq)) (exit-on nil) )
+(defun buffer-set (eli keyseq &key (append nil) (start 0) (end (1- (length keyseq))) (exit-on nil) )
   "force or append keyseq into buffer, optionally terminating on an 'exit-on value."
+  (format t "BUFFER-SET: keyseq ~A start: ~A end ~A~%" keyseq start end)
   (with-slots (buffer keymap-top match) eli
     (unless append (setf (fill-pointer buffer) 0))
     (loop for i from start to end
        for item =(elt keyseq i)
-       until (= item exit-on)
-       do (vector-push-extend item buffer))
-    (setf match (keymap-match keymap-top buffer)))
-  (render eli))
+       until (eq item exit-on)
+       do (format t "ITEM ~A~%" item) (vector-push-extend item buffer)))
+  (buffer-process eli))
 
+(defun buffer-process (eli)
+  "attempt to run a function matching the buffer keyseq."
+  (with-slots (buffer keymap-top interactive match) eli
+    (setf match (keymap-match keymap-top buffer))
+    (typecase match
+      (null nil) ;otherwise, symbol matches
+      (function 
+       (funcall match eli)		;regular binding
+       (reset eli))		;done with command
+      (symbol			;install interactive
+       (funcall
+	(setf interactive (symbol-function match))
+	eli :initialize))
+      (t ;partial match or no matches
+       (render eli))))   )
 
 
 (defun render (eli)
@@ -110,7 +122,6 @@
 (defun reset (eli &key (full nil))
   (with-slots (instance buffer entry left middle menubut interactive) eli
     "reset input state and visuals."
-    (buffer-reset eli)
     (setf (gtk-entry-text entry) "")
     (gtk-widget-hide entry)
     (gtk-label-set-text left "")
@@ -120,6 +131,7 @@
       (and interactive
 	   (funcall interactive eli :finalize))
       (setf interactive nil)))
+    (buffer-reset eli) ;do this last - it will render
   t)
 
 (defun use-entry (eli on)
@@ -134,24 +146,6 @@
 	  (gtk-widget-hide entry)
 	  (gtk-widget-show middle)))))
 
-(defun dispatch-function (eli match)
-  (with-slots (interactive) eli
-    (typecase match
-      (null nil)
-      (function 
-       (funcall match eli)		;regular binding
-       (reset eli))		;done with command
-      (symbol			;install interactive
-       (funcall
-	(setf interactive (symbol-function match))
-	eli :initialize)))))
-
-(defun dispatch-key (eli)
-  "Attempt a dispatch on current keystr."
-  (with-slots (buffer interactive key keymap-top match) eli
-    (buffer-append-key eli)
-    (dispatch-function eli match)
-    t)) ;done with keystroke for internal processing.
 
 (defun dispatch-instant (eli)
   "if key is bound as instant, invoke binding.  Otherwise, return nil for further
@@ -168,7 +162,7 @@ processing"
     (unless (dispatch-instant eli)
       (if interactive
 	  (funcall interactive eli :process) ;returns nil/t to process keys in gtk
-	  (dispatch-key eli) ;otherwise, internal dispatch
+	  (buffer-append-key eli) ;otherwise, internal dispatch
 	  ))))
 
 (defun on-key-press (eli widget event)
@@ -191,7 +185,11 @@ processing"
 			       (keyseq->string
 				(keymap-keyseq-at keymap-top index)))
 		  :on-click (lambda (index)
-			      (format t "CLICKED ON ~A~%" index))))))
+			      (format t "balling buffer-set: ~A~%"
+				      (keymap-keyseq-at keymap-top (elt match index)))
+			      (buffer-set eli
+					  (keymap-keyseq-at keymap-top (elt match index)))
+			      				      )))))
 
 (defun make-eli (window)
   "Create an eli command bar; return eli"
@@ -234,8 +232,7 @@ processing"
 ;;;
 ;;; This is a little complicated. Basically, if there are partial matches,
 ;;; we find the longest string which starts all the mathches.  We then
-;;; inject the keys into dispatch-key, as if they were typed. If there
-;;; is a <RET>, we stop before it, to avoid trouble.
+;;; update the buffer. If there is a <RET>, we stop before it, to avoid trouble.
 (defun inst-tab (eli)
   (with-slots (keymap-top buffer key match) eli
     (when (consp match)
@@ -250,7 +247,6 @@ processing"
 		     minimize (mismatch ks ref :start1 buf-len :start2 buf-len))
 		  (length first-keystr))))
 	;;insert remaining keys, terminating on <RET> to avoid running
-
 	(buffer-set eli first-keystr
 		    :append t
 		    :start buf-len :end (1- tab-by)
