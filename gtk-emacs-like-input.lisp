@@ -16,7 +16,7 @@
   key            ;; active key
   interactive    ;; interactive function in control
   window         ;; top window
-
+  match          ;; a list of indices of possible keymap matches, or function
  
 )
 ;;; Key processing:
@@ -54,9 +54,6 @@
 ;;;   to uninstall itself and _immediately_ return t.  Reset re-invokes the
 ;;;   handler with :finalize (from inside the handler!)  You've been warned.
 
-
-
-  
 
 (defun render (eli &key (match nil))
   "Visually update the information in the bar"
@@ -113,23 +110,25 @@
 	  (gtk-widget-hide entry)
 	  (gtk-widget-show middle)))))
 
-    
+(defun dispatch-function (eli match)
+  (with-slots (interactive) eli
+    (typecase match
+      (null nil)
+      (function 
+       (funcall match eli)		;regular binding
+       (reset eli))		;done with command
+      (symbol			;install interactive
+       (funcall
+	(setf interactive (symbol-function match))
+	eli :initialize)))))
+
 (defun dispatch-key (eli)
   "Attempt a dispatch on current keystr."
   (with-slots (buffer interactive key keymap-top match) eli
     (vector-push-extend key buffer)	;append key to buffer
     (let ((match (keymap-match keymap-top buffer)))
       (render eli :match match)
-      
-      (typecase match
-	(null nil)
-	(function 
-	 (funcall match eli)		;regular binding
-	 (reset eli))		;done with command
-	(symbol			;install interactive
-	 (funcall
-	  (setf interactive (symbol-function match))
-	  eli :initialize)))
+      (dispatch-function eli match)
       t)))
 
 (defun dispatch-instant (eli)
@@ -139,7 +138,7 @@ processing"
   (with-slots (keymap-instant key) eli
     (let ((match (keymap-exact-match keymap-instant (vector key))))
 ;      (format t "INSTANT MATCH ~A~%" match)
-      (when match (funcall match eli)))))
+      (when match (funcall match eli))))) ;if no match, when returns nil, ow whatever!
 
 (defun input-keystroke (eli)
   "process a keystroke."
@@ -156,7 +155,6 @@ processing"
   (let ((gtkkey (gdk-event-key-keyval event)))
     (format t "GTKKEY: ~A~%" gtkkey)
     (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
-      
       (setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
       (input-keystroke eli))))
 
@@ -202,7 +200,7 @@ processing"
       ;; create buffer
       (setf buffer (make-array 32 :fill-pointer 0 :adjustable t) )
       
-      (eli-signal-connect menubut "clicked" on-suggest-clicked (widget))
+      (eli-signal-connect menubut "clicked" make-suggest-menu (widget))
       (eli-signal-connect window "key-press-event" on-key-press (widget event))
       eli)))
 
