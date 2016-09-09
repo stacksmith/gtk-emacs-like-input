@@ -9,14 +9,14 @@
   left           ;; gtk label on left side (keys as entered)
   middle         ;; gtk label in the middle 
   entry          ;; gtk text entry, hidden on start
-  right          ;; gtk label on right (status)
+  menubut        ;; for suggested matches
   keymap-top     ;; top keymap
   keymap-instant ;; instant keymap (each character for cancel)
   buffer         ;; sequence of keys from command start
   key            ;; active key
   interactive    ;; interactive function in control
   window         ;; top window
-  menubut        ;; for suggested matches
+
  
 )
 ;;; Key processing:
@@ -60,7 +60,7 @@
 
 (defun render (eli &key (match nil))
   "Visually update the information in the bar"
-  (with-slots (buffer keymap-top left middle right menubut) eli
+  (with-slots (buffer keymap-top left middle menubut) eli
     (unless match ;if match not passed to us, calculate it
       (setf match (keymap-match keymap-top buffer))
       ;      (unless (zerop (length buffer)))	;if buffer length >0
@@ -74,7 +74,7 @@
 	   (format nil  "<span foreground=\"#000088\">~A</span>" string)
 	   (format nil  "<span foreground=\"#000000\">~A</span>" string))))
     (gtk-label-set-text middle "")
-    (setf (gtk-button-label right)
+    (setf (gtk-button-label menubut)
 	  (if (consp match)
 	      (if (cdr match)
 		  (format nil "~A possibilities" (length match))
@@ -85,14 +85,14 @@
   ))
 
 (defun reset (eli &key (full nil))
-  (with-slots (instance buffer entry left middle right menubut interactive) eli
+  (with-slots (instance buffer entry left middle menubut interactive) eli
     "reset input state and visuals."
-    (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
+    (setf (fill-pointer buffer) 0
 	  (gtk-entry-text entry) "")
     (gtk-widget-hide entry)
     (gtk-label-set-text left "")
     (gtk-label-set-text middle "")
-    (setf (gtk-button-label right) "")
+    (setf (gtk-button-label menubut) "")
 ;    (gtk-widget-hide menubut)
     
     (when full ; reset interactive stuff
@@ -178,36 +178,31 @@ processing"
   "Create an eli command bar; return eli"
   (let ((eli (construct-eli)))
     
-    (with-slots (bar left middle entry right menubut keymap-top keymap-instant) eli
-      
-      (setf bar (make-instance 'gtk-box :orientation :horizontal )
+    (with-slots (bar left middle entry menubut keymap-top keymap-instant buffer) eli
+       (setf bar (make-instance 'gtk-box :orientation :horizontal )
 	    left (make-instance 'gtk-label :label "left"   )
 	    middle (make-instance 'gtk-label :label "middle" ) 
 	    entry (make-instance 'gtk-entry :label "entry"  ) 
-	    right (make-instance 'gtk-button :label "right" )
-	    menubut (gtk-menu-new))
-   ;   (gtk-menu-shell-append menubut (gtk-menu-item-new-with-label "duck" ))
-
+	    menubut (make-instance 'gtk-button :label "menubut" ))
       
       (gtk-box-pack-start    bar left :expand nil)
       (gtk-box-pack-start    bar middle :expand t)
       (gtk-box-pack-start    bar entry :expand t)
-					;(gtk-box-pack-start    bar menubut :expand nil)
-      (gtk-box-pack-start    bar right :expand nil)
+      (gtk-box-pack-start    bar menubut :expand nil)
 
       ;; set up keymaps
       (setf keymap-top  (new-keymap)
 	    keymap-instant (new-keymap))
       ;; and instant key processing
-
-
       (bind keymap-instant "<C-g>" #'inst-cancel)
       (bind keymap-instant "<BS>" #'inst-back-up)
       (bind keymap-instant "<TAB>" #'inst-tab)
       ;; default keystrokes
       (bind keymap-top  "<C-x><C-c>" #'app-quit)
+      ;; create buffer
+      (setf buffer (make-array 32 :fill-pointer 0 :adjustable t) )
       
-      (eli-signal-connect right "clicked" on-suggest-clicked (widget))
+      (eli-signal-connect menubut "clicked" on-suggest-clicked (widget))
       (eli-signal-connect window "key-press-event" on-key-press (widget event))
       eli)))
 
