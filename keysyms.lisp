@@ -1,12 +1,15 @@
 (in-package #:gtk-emacs-like-input)
 
 ;;; This is a bit of a mess.  Keys come in as gtkkey codes representing
-;;; keyboard codes.  These are mapped across keymaps; keymaps need an
-;;; ascii representation.  I am not sure about unicode support across
-;;; all Lisp implementations (CCL does not seem to (code-char #x2399) as
-;;; PRINT_SCREEN_SYMBOL, for instance...
-;;;   Since GTK should handle all keystrokes correctly across platforms,
-;;; we shall rely on GTK codes, and translate them to Lisp chars only
+;;; keyboard codes.  These are mapped across keymaps; at some point
+;;; they will need to be converted to lisp codes.  Gtkkey codes seem
+;;; to not match the lisp character set, and Lisp implementations are
+;;; not very portable about printing non-ascii characters (CCL does not
+;;; seem to recognize (code-char #x2399) as PRINT_SCREEN_SYMBOL; while
+;;; gtk reports it as #xFF61.
+;;;
+;;; Since at this stage we have to handle keystrokes across all platforms
+;;; we shall rely on GTK codes, and translate them to Lisp chars only;
 ;;; as necessary.
 
 ;;;   Note that #'equalp is used, making name lookup case-insensitive.
@@ -25,6 +28,7 @@
 (defun gtkcode->gtkname (gtkcode)
   "Return the name corresponding to GTKCODE or nil"
   (gethash gtkcode *gtkcode-gtkname-map*))
+
 (define-gtkcode #xffffff "VoidSymbol")   ;Void symbol
 
 (defun modifier-p (gtkcode)

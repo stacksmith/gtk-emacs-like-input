@@ -16,6 +16,7 @@
   key            ;; active key
   interactive    ;; interactive function in control
   window         ;; top window
+  menubut        ;; for suggested matches
  
 )
 ;;; Key processing:
@@ -54,33 +55,44 @@
 ;;;   handler with :finalize (from inside the handler!)  You've been warned.
 
 
+
+  
+
 (defun render (eli &key (match nil))
   "Visually update the information in the bar"
-  (with-slots (buffer keymap-top left middle right) eli
+  (with-slots (buffer keymap-top left middle right menubut) eli
     (unless match ;if match not passed to us, calculate it
       (unless (zerop (length buffer)) ;if buffer length >0
 	(setf match (keymap-match keymap-top buffer))))
     ;; match now nil, list, or a hit
     ;;    (gtk-label-set-text left (keyseq->string buffer) )
     (let ((string (html-escape (keyseq->string buffer))))
-      (gtk-label-set-markup       left (if match
-		(format nil  "<span foreground=\"#000088\">~A</span>" string)
-		string)))
+      (gtk-label-set-markup
+       left
+       (if match
+	   (format nil  "<span foreground=\"#000088\">~A</span>" string)
+	   (format nil  "<span foreground=\"#000000\">~A</span>" string))))
     (gtk-label-set-text middle "")
-    (gtk-label-set-text right
+    (setf (gtk-button-label right)
 			(if (consp match)
 			    (format nil "~A matches" (length match))
-			    (format nil "")))))
+			    (format nil "")))
+    ;
+  ;  (render-combo eli match)
+  ))
 
 (defun reset (eli &key (full nil))
-  (with-slots (instance buffer entry left middle right interactive) eli
+  (with-slots (instance buffer entry left middle right menubut interactive) eli
     "reset input state and visuals."
+
+    
     (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
 	  (gtk-entry-text entry) "")
     (gtk-widget-hide entry)
     (gtk-label-set-text left "")
     (gtk-label-set-text middle "")
-    (gtk-label-set-text right "")
+    (setf (gtk-button-label right) "")
+;    (gtk-widget-hide menubut)
     
     (when full ; reset interactive stuff
       (and interactive
@@ -137,46 +149,77 @@ processing"
 	  (dispatch-key eli) ;otherwise, internal dispatch
 	  ))))
 
-(defun on-key-press (widget event)
+(defun on-key-press (eli widget event)
   "Process a key from GTK; ignore modifier keys; process other keys in eli"
+  (declare (ignore widget))
   (let ((gtkkey (gdk-event-key-keyval event)))
     (format t "GTKKEY: ~A~%" gtkkey)
     (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
-      (let ((eli (gethash widget eli-map)))
-	(unless eli
-	  (error 'eli-error :message "eli:on-key-press: invalid window" :value widget))
-	(setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
-	(input-keystroke eli)))))
+      
+      (setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
+      (input-keystroke eli))))
 
-(defparameter eli-map nil) ;;;TODO: remove killed, eli, etc...
+
+(defun make-suggest-menu (eli match)
+  "create a pop-up menu from a match"
+  (with-slots (keymap-top) eli
+    (let ((popup-menu 
+	   (make-popup-menu
+	    match ;is a list of indices, convert them to strings.
+	    (lambda (index) (keyseq->string (keymap-keyseq-at keymap-top index))))
+
+	    ))
+      (g-signal-connect popup-menu "selection-done" (lambda (w) (format t "SEL-DONE ~A ~A~%" w (gtk-menu-active w)
+									)))
+      
+     popup-menu )))
+
+(defun on-suggest-clicked (eli widget)
+  (declare (ignore widget))
+  (with-slots (keymap-top buffer) eli
+    (format t "CLICKED")
+    (let ((match (keymap-match keymap-top buffer)))
+      (if (consp match)
+	  (gtk-menu-popup (make-suggest-menu eli match) :activate-time (gtk-get-current-event-time))))))
+
+
 (defun make-eli (window)
   "Create an eli command bar; return eli"
   (let ((eli (construct-eli)))
-    (with-slots (bar left middle entry right keymap-top keymap-instant) eli
-      (unless eli-map
-	(setf eli-map (make-hash-table)))
-      (setf (gethash window eli-map) eli
-	    (eli-window eli) window)
+    
+    (with-slots (bar left middle entry right menubut keymap-top keymap-instant) eli
+      
       (setf bar (make-instance 'gtk-box :orientation :horizontal )
-	    left (make-instance 'gtk-label :label "left"  )
+	    left (make-instance 'gtk-label :label "left"   )
 	    middle (make-instance 'gtk-label :label "middle" ) 
 	    entry (make-instance 'gtk-entry :label "entry"  ) 
-	    right (make-instance 'gtk-label :label "right" ))
-      ;;note:
+	    right (make-instance 'gtk-button :label "right" )
+	    menubut (gtk-menu-new))
+   ;   (gtk-menu-shell-append menubut (gtk-menu-item-new-with-label "duck" ))
+
+      
       (gtk-box-pack-start    bar left :expand nil)
       (gtk-box-pack-start    bar middle :expand t)
       (gtk-box-pack-start    bar entry :expand t)
+					;(gtk-box-pack-start    bar menubut :expand nil)
       (gtk-box-pack-start    bar right :expand nil)
+
       ;; set up keymaps
       (setf keymap-top  (new-keymap)
 	    keymap-instant (new-keymap))
       ;; and instant key processing
+
+
       (bind keymap-instant "<C-g>" #'inst-cancel)
       (bind keymap-instant "<BS>" #'inst-back-up)
       (bind keymap-instant "<TAB>" #'inst-tab)
-      ; default keystrokes
-      (bind keymap-top  "<C-x><C-c>" #'app-quit))
-    eli))
+      ;; default keystrokes
+      (bind keymap-top  "<C-x><C-c>" #'app-quit)
+      
+      (eli-signal-connect right "clicked" on-suggest-clicked (widget))
+      (eli-signal-connect window "key-press-event" on-key-press (widget event))
+
+      eli)))
 
 ;;; Some helper functions that can be bound
 (defun inst-cancel (eli)
@@ -258,41 +301,38 @@ processing"
 ))
     
 
-(defun test ()
-  (let ((window nil))
-       
-    (defun run (&key (stdout *standard-output*))
-      (let ((gtk::*main-thread* nil))
-	(within-main-loop
-	  (setf *standard-output* stdout) ;enable output in this thread
-	  (setf window (make-instance 'gtk-application-window
-				      :title "eli-test"
-				      :type :toplevel
-				      :border-width 0
-				      :default-width 640
-				      :default-height 480))
-	  
-	  ;; create a window with a command line on the bottom.
-	  (let (( eli (make-eli window)))
-	    (let ((workspace (make-instance 'gtk-box :orientation :vertical))
-		  (dummy (make-instance 'gtk-box ))
-		  (bar (eli-bar eli)))
-	      (gtk-box-pack-start workspace dummy)
-	      (gtk-box-pack-end workspace bar :expand nil)
-	      (gtk-container-add window workspace)
-	      )
-	    
-	    (bind-keys eli)
-	    (g-signal-connect window "key-press-event" #'on-key-press)
-	    (g-signal-connect window "destroy"
-			      (lambda (widget)
-				(declare (ignore widget))
-				(format t "done")))
-	    
-	    (gtk-widget-show-all window)
-	    (reset eli :full t))
-	  )))
-    (run)))
 
+  
+       
+(defun test (&key (stdout *standard-output*))
+  (let ((gtk::*main-thread* nil))
+    (within-main-loop
+      (setf *standard-output* stdout) ;enable output in this thread
+      ;; create a window with a command line on the bottom.
+      (let*((window (make-instance 'gtk-application-window
+				  :title "eli-test"
+				  :type :toplevel
+				  :border-width 0
+				  :default-width 640
+				  :default-height 480) )
+	    (eli (make-eli window))
+	    (workspace (make-instance 'gtk-box :orientation :vertical))
+	    (dummy (make-instance 'gtk-box ))
+	    (bar (eli-bar eli)))
+	(gtk-box-pack-start workspace dummy)
+	(gtk-box-pack-end workspace bar :expand nil)
+	(gtk-container-add window workspace)
+	  
+	
+	(bind-keys eli)
+	(g-signal-connect window "destroy"
+			  (lambda (widget)
+			    (declare (ignore widget))
+			    (format t "done")))
+	
+	(gtk-widget-show-all window)
+	(reset eli :full t))))
+  )
+ 
 
 

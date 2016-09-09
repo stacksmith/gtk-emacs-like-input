@@ -30,3 +30,22 @@
 
 
 
+(defmacro eli-signal-connect (instance detailed-signal handler (&rest parameters))
+  "like gtk-signal-connect, but
+1) specifies the handler's parameters;
+2) calls the handler with eli in front of the parameters"
+  `(g-signal-connect ,instance ,detailed-signal
+		     (lambda (,@parameters) (,handler eli ,@parameters))))
+
+(defun make-popup-menu (item-list &optional transform)
+  "create a pop-up menu from a list of strings.  If transform is specified,
+it must be a lambda that takes the item and returns a string."
+  (let ((menu (gtk-menu-new)))
+    (mapc
+     (lambda (label)
+       (if transform (setf label (funcall transform label)))
+       (let ((item (gtk-menu-item-new-with-label label)))
+	 (gtk-menu-shell-append menu item)
+	 (gtk-widget-show item)))
+     item-list)
+    menu))
