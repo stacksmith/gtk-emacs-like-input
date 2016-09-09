@@ -15,7 +15,6 @@ To add eli to your application, do something along the lines of
  (let ((eli (make-eli window))) ; create eli for this top window
    ... ;pack your gadgets into the window
    (gtk-box-pack-end container (eli-bar eli) :expand nil) ; place the eli-bar gadget on the bottom 
-   (g-signal-connect window "key-press-event" #'on-key-press) ; connect default key processing
    (gtk-widget-show-all window)
    (reset eli :full t)) ;perform a full reset
    ...
