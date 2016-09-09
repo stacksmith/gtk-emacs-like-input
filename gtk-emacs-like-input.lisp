@@ -21,22 +21,18 @@
 )
 ;;; Key processing:
 ;;;
-;;;   Find proper eli structure for this gtk widget (for multiple instances)
-;;;   Create a key and store it in eli.  Modifiers are ignores as gtk
-;;;   will attach them to the actual keys later.  
-;;;  
+;;;   Check if the key is a modifier.  If so, ignore it as gtk will use it.
+;;;
+;;;   Otherwise, create a key and store it in eli.
+;;;
 ;;;   Check the key against keymap-instant for cancel and emergency keystrokes.
 ;;;   Call instant binding if it exists which returns t or nil to gtk.
 ;;;
 ;;;   Otherwise, if interactive is active, invoke interactve handler with 1.
 ;;;
-;;;   Otherwise, append the key to the buffer.  Try to match the buffer to
-;;;   a binding via the keymap, and if any, even partial matches exist, call
-;;;   render (to display partial matches, or assist the user to choose).
-
-;;;   If a full match exists, check the binding type.  Symbols install an
-;;;   interactive function and call to initialize it (with 0).  Functions
-;;;   are funcalled and the environment is reset for next command.
+;;;   Otherwise, append the key to the buffer.  That triggers the buffer
+;;;   process, which updates, dispatches on functions, and installs interactive
+;;;   as required.
 ;;;
 ;;;   Handlers
 ;;;
@@ -88,7 +84,8 @@
   (with-slots (buffer keymap-top interactive match) eli
     (setf match (keymap-match keymap-top buffer))
     (typecase match
-      (null nil) ;otherwise, symbol matches
+      (list ;nil or partial list
+       (render eli))		
       (function 
        (funcall match eli)		;regular binding
        (reset eli))		;done with command
@@ -96,8 +93,7 @@
        (funcall
 	(setf interactive (symbol-function match))
 	eli :initialize))
-      (t ;partial match or no matches
-       (render eli))))   )
+      (t  (format t "ERROR"))))   )
 
 
 (defun render (eli)
@@ -156,23 +152,20 @@ processing"
 ;      (format t "INSTANT MATCH ~A~%" match)
       (when match (funcall match eli))))) ;if no match, when returns nil, ow whatever!
 
-(defun input-keystroke (eli)
-  "process a keystroke."
-  (with-slots (interactive) eli
-    (unless (dispatch-instant eli)
-      (if interactive
-	  (funcall interactive eli :process) ;returns nil/t to process keys in gtk
-	  (buffer-append-key eli) ;otherwise, internal dispatch
-	  ))))
 
 (defun on-key-press (eli widget event)
   "Process a key from GTK; ignore modifier keys; process other keys in eli"
   (declare (ignore widget))
-  (let ((gtkkey (gdk-event-key-keyval event)))
-    (format t "GTKKEY: ~A~%" gtkkey)
-    (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
-      (setf (eli-key eli) (make-key gtkkey (gdk-event-key-state event)))
-      (input-keystroke eli))))
+  (with-slots (key interactive) eli
+    (let ((gtkkey (gdk-event-key-keyval event)))
+      ;;(format t "GTKKEY: ~A~%" gtkkey)
+      (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
+	(setf key (make-key gtkkey (gdk-event-key-state event)))
+	(unless (dispatch-instant eli)
+	  (if interactive
+	      (funcall interactive eli :process) ;returns nil/t to process keys in gtk
+	      (buffer-append-key eli) ;otherwise, internal dispatch
+	      ))))))
 
 
 (defun make-suggest-menu (eli widget)
