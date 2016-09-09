@@ -62,8 +62,9 @@
   "Visually update the information in the bar"
   (with-slots (buffer keymap-top left middle right menubut) eli
     (unless match ;if match not passed to us, calculate it
-      (unless (zerop (length buffer)) ;if buffer length >0
-	(setf match (keymap-match keymap-top buffer))))
+      (setf match (keymap-match keymap-top buffer))
+      ;      (unless (zerop (length buffer)))	;if buffer length >0
+	)
     ;; match now nil, list, or a hit
     ;;    (gtk-label-set-text left (keyseq->string buffer) )
     (let ((string (html-escape (keyseq->string buffer))))
@@ -74,9 +75,11 @@
 	   (format nil  "<span foreground=\"#000000\">~A</span>" string))))
     (gtk-label-set-text middle "")
     (setf (gtk-button-label right)
-			(if (consp match)
-			    (format nil "~A matches" (length match))
-			    (format nil "")))
+	  (if (consp match)
+	      (if (cdr match)
+		  (format nil "~A possibilities" (length match))
+		  (format nil "1 possibility"))
+	      (format nil "")))
     ;
   ;  (render-combo eli match)
   ))
@@ -84,8 +87,6 @@
 (defun reset (eli &key (full nil))
   (with-slots (instance buffer entry left middle right menubut interactive) eli
     "reset input state and visuals."
-
-    
     (setf buffer (make-array 32 :fill-pointer 0 :adjustable t)
 	  (gtk-entry-text entry) "")
     (gtk-widget-hide entry)
@@ -160,28 +161,18 @@ processing"
       (input-keystroke eli))))
 
 
-(defun make-suggest-menu (eli match)
+(defun make-suggest-menu (eli widget)
   "create a pop-up menu from a match"
-  (with-slots (keymap-top) eli
-    (let ((popup-menu 
-	   (make-popup-menu
-	    match ;is a list of indices, convert them to strings.
-	    (lambda (index) (keyseq->string (keymap-keyseq-at keymap-top index))))
-
-	    ))
-      (g-signal-connect popup-menu "selection-done" (lambda (w) (format t "SEL-DONE ~A ~A~%" w (gtk-menu-active w)
-									)))
-      
-     popup-menu )))
-
-(defun on-suggest-clicked (eli widget)
   (declare (ignore widget))
   (with-slots (keymap-top buffer) eli
-    (format t "CLICKED")
     (let ((match (keymap-match keymap-top buffer)))
-      (if (consp match)
-	  (gtk-menu-popup (make-suggest-menu eli match) :activate-time (gtk-get-current-event-time))))))
-
+      (when (consp match)
+	(popup-menu match		      ;it's a list of indices into keymap-top!
+	 :transform (lambda (index)
+		      (keyseq->string
+		       (keymap-keyseq-at keymap-top index)))
+	 :on-click (lambda (index)
+		     (format t "CLICKED ON ~A~%" index)))))))
 
 (defun make-eli (window)
   "Create an eli command bar; return eli"
@@ -218,7 +209,6 @@ processing"
       
       (eli-signal-connect right "clicked" on-suggest-clicked (widget))
       (eli-signal-connect window "key-press-event" on-key-press (widget event))
-
       eli)))
 
 ;;; Some helper functions that can be bound
@@ -329,7 +319,6 @@ processing"
 			  (lambda (widget)
 			    (declare (ignore widget))
 			    (format t "done")))
-	
 	(gtk-widget-show-all window)
 	(reset eli :full t))))
   )

@@ -37,15 +37,47 @@
   `(g-signal-connect ,instance ,detailed-signal
 		     (lambda (,@parameters) (,handler eli ,@parameters))))
 
-(defun make-popup-menu (item-list &optional transform)
-  "create a pop-up menu from a list of strings.  If transform is specified,
-it must be a lambda that takes the item and returns a string."
+
+
+;;;=============================================================================
+;;;
+;;; Popup menu...
+;;;
+;;; create and pop up a menu for a list of items.
+;;;
+;;; transform:
+;;; - nil if items are strings
+;;; - f(item) to convert each item to a string
+;;;
+;;; on-click
+;;; - f(index) 
+(defun popup-menu (item-seq &key (transform nil) on-click (on-cancel nil) )
+  "Create a pop-up menu from a sequence of strings or (or items that can be
+converted to strings using the 'transform' lambda.  Execute 'on-click' 
+lambda when the user selects an item, passing it the index."
   (let ((menu (gtk-menu-new)))
-    (mapc
-     (lambda (label)
-       (if transform (setf label (funcall transform label)))
-       (let ((item (gtk-menu-item-new-with-label label)))
-	 (gtk-menu-shell-append menu item)
-	 (gtk-widget-show item)))
-     item-list)
+    ;; There is no way to tell at the end if the user clicked on a menu or
+    ;; if it was closed by clicking away - both wind up with active index 0.
+    ;; As a workaround, create a hidden menu-item for index 0.
+    (gtk-menu-shell-append menu (gtk-menu-item-new-with-label "fake"))
+    ;; append each item in the-seq to the menu, transforming as needed.
+    (mapc (lambda (label)
+	    (let ((menu-item (gtk-menu-item-new-with-label
+			      (if transform
+				  (funcall transform label)
+				  label))))
+	      (gtk-menu-shell-append menu menu-item)
+	      (gtk-widget-show menu-item)))
+	  item-seq)
+    ;; establish click handling
+    (g-signal-connect menu "selection-done"
+		      (lambda (menu)
+			;; remember that index 0 means no active menu item.
+			(let ((click-index (gtk-menu-active menu)))
+			  (if (zerop click-index)
+			      (and on-cancel (funcall on-cancel))
+			      (funcall on-click (1- click-index))))))
+     ;; pop it up
+    (gtk-menu-popup menu :activate-time (gtk-get-current-event-time))
+    (format t "ON START ~A SELECTED~%" (gtk-menu-active menu))
     menu))
