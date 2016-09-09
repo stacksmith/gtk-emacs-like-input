@@ -55,13 +55,36 @@
 ;;;   handler with :finalize (from inside the handler!)  You've been warned.
 
 
-(defun render (eli &key (match nil))
+;;; buffer functions - affect match...
+
+(defun buffer-append-key (eli)
+  (with-slots (key buffer keymap-top match) eli
+    (vector-push-extend key buffer) 	        ;;append key to buffer
+    (setf match (keymap-match keymap-top buffer)))) ;;and update match 
+
+(defun buffer-bs (eli)
+  (with-slots (buffer keymap-top match) eli
+    (vector-pop buffer)
+    (setf match (keymap-match keymap-top buffer))))
+
+(defun buffer-reset (eli)
+  (with-slots (buffer keymap-top match) eli
+    (setf (fill-pointer buffer) 0)
+    (setf match (keymap-match keymap-top buffer))))
+
+(defun buffer-append (eli keyseq &key (start 0) (end (length keyseq)) (exit-on nil) )
+  "append keyseq to the buffer, optionally terminating on an 'exit-on value."
+  (with-slots (buffer keymap-top match) eli
+    (loop for i from start to end
+       for item =(elt keyseq i)
+       until (= item exit-on)
+       do (vector-push-extend item buffer))
+    (setf match (keymap-match keymap-top buffer))))
+
+
+(defun render (eli)
   "Visually update the information in the bar"
-  (with-slots (buffer keymap-top left middle menubut) eli
-    (unless match ;if match not passed to us, calculate it
-      (setf match (keymap-match keymap-top buffer))
-      ;      (unless (zerop (length buffer)))	;if buffer length >0
-	)
+  (with-slots (buffer left middle menubut match) eli
     ;; match now nil, list, or a hit
     ;;    (gtk-label-set-text left (keyseq->string buffer) )
     (let ((string (html-escape (keyseq->string buffer))))
@@ -76,22 +99,17 @@
 	      (if (cdr match)
 		  (format nil "~A possibilities" (length match))
 		  (format nil "1 possibility"))
-	      (format nil "")))
-    ;
-  ;  (render-combo eli match)
-  ))
+	      (format nil "")))))
 
 (defun reset (eli &key (full nil))
   (with-slots (instance buffer entry left middle menubut interactive) eli
     "reset input state and visuals."
-    (setf (fill-pointer buffer) 0
-	  (gtk-entry-text entry) "")
+    (buffer-reset eli)
+    (setf (gtk-entry-text entry) "")
     (gtk-widget-hide entry)
     (gtk-label-set-text left "")
     (gtk-label-set-text middle "")
     (setf (gtk-button-label menubut) "")
-;    (gtk-widget-hide menubut)
-    
     (when full ; reset interactive stuff
       (and interactive
 	   (funcall interactive eli :finalize))
@@ -125,11 +143,10 @@
 (defun dispatch-key (eli)
   "Attempt a dispatch on current keystr."
   (with-slots (buffer interactive key keymap-top match) eli
-    (vector-push-extend key buffer)	;append key to buffer
-    (let ((match (keymap-match keymap-top buffer)))
-      (render eli :match match)
-      (dispatch-function eli match)
-      t)))
+    (buffer-append-key eli)
+    (render eli)
+    (dispatch-function eli match)
+    t)) ;done with keystroke for internal processing.
 
 (defun dispatch-instant (eli)
   "if key is bound as instant, invoke binding.  Otherwise, return nil for further
@@ -162,15 +179,14 @@ processing"
 (defun make-suggest-menu (eli widget)
   "create a pop-up menu from a match"
   (declare (ignore widget))
-  (with-slots (keymap-top buffer) eli
-    (let ((match (keymap-match keymap-top buffer)))
-      (when (consp match)
-	(popup-menu match		      ;it's a list of indices into keymap-top!
-	 :transform (lambda (index)
-		      (keyseq->string
-		       (keymap-keyseq-at keymap-top index)))
-	 :on-click (lambda (index)
-		     (format t "CLICKED ON ~A~%" index)))))))
+  (with-slots (keymap-top  match) eli
+    (when (consp match)
+      (popup-menu match		      ;it's a list of indices into keymap-top!
+		  :transform (lambda (index)
+			       (keyseq->string
+				(keymap-keyseq-at keymap-top index)))
+		  :on-click (lambda (index)
+			      (format t "CLICKED ON ~A~%" index))))))
 
 (defun make-eli (window)
   "Create an eli command bar; return eli"
@@ -216,39 +232,34 @@ processing"
 ;;; inject the keys into dispatch-key, as if they were typed. If there
 ;;; is a <RET>, we stop before it, to avoid trouble.
 (defun inst-tab (eli)
-  (with-slots (keymap-top buffer key) eli
-    (let ((match (keymap-match keymap-top buffer)))
-      (when (consp match)
-	;; determine if all matches have a common beginning sequence
-	(let* ((first-keystr (keymap-keyseq-at keymap-top (first match)))
-	       (buf-len (length buffer))
-	       (tab-by
-		(if (cdr match)
-		    (loop for i in (cdr match) ;loop for all matches but first
-		       for ks = (keymap-keyseq-at keymap-top i) ;get keystrs
-		       with ref = first-keystr
-		       minimize (mismatch ks ref :start1 buf-len :start2 buf-len))
-		    (length first-keystr))))
-	  ;;insert keys
-	  (format t "xx~A~%" tab-by)
-	  (loop for i from buf-len upto (1- tab-by)
-	     for gtkkey = (elt first-keystr i)
-	     until (= gtkkey #xff0d) ;terminate at return
-	     do
-	       (setf key gtkkey)
-	       (dispatch-key eli) ;watch out, re-entering! gtk-test-widget-send-key ...
-;	       (vector-push-extend gtkkey buffer)
-	       ))))
-    (render eli)
+  (with-slots (keymap-top buffer key match) eli
+    (when (consp match)
+      ;; determine if all matches have a common beginning sequence
+      (let* ((first-keystr (keymap-keyseq-at keymap-top (first match)))
+	     (buf-len (length buffer))
+	     (tab-by
+	      (if (cdr match)
+		  (loop for i in (cdr match) ;loop for all matches but first
+		     for ks = (keymap-keyseq-at keymap-top i) ;get keystrs
+		     with ref = first-keystr
+		     minimize (mismatch ks ref :start1 buf-len :start2 buf-len))
+		  (length first-keystr))))
+	;;insert remaining keys, terminating on <RET> to avoid running
+
+	(buffer-append eli first-keystr :start buf-len :end (1- tab-by)
+		       :exit-on #xff0d)
+	(render eli)
+	))
     t))
 
 (defun inst-back-up (eli)
   "instant. BS the last keystroke"
-  (with-slots (buffer interactive) eli
+  (with-slots (buffer interactive keymap-top match) eli
     (format t "int ~A SIZE: ~A~%" interactive (length buffer))
     (unless interactive ; on interactive return nil, it will handle
       (unless (zerop (length buffer))
-	(vector-pop buffer)
+	(vector-pop buffer) ;since we are modifying buffer
+	(setf match (keymap-match keymap-top buffer)) ;update matches
 	(render eli))
       t)))
 (defun app-quit (eli)
