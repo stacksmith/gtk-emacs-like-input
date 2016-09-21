@@ -17,6 +17,7 @@
   interactive    ;; interactive function in control
   window         ;; top window
   match          ;; a list of indices of possible keymap matches, or function
+  payload        ;; application context from parent app
  
 )
 ;;; Key processing:
@@ -135,7 +136,7 @@
     (format t "USE-ENTRY~%")
     (if on
 	(progn
-	  (gtk-widget-hide middle)
+	  ;(gtk-widget-hide middle)
 	  (gtk-widget-show entry)
 	  (gtk-widget-grab-focus entry))
 	(progn
@@ -184,9 +185,9 @@ processing"
 					  (keymap-keyseq-at keymap-top (elt match index)))
 			      				      )))))
 
-(defun make-eli (window)
+(defun make-eli (window context)
   "Create an eli command bar; return eli"
-  (let ((eli (construct-eli)))
+  (let ((eli (construct-eli :payload context)))
     
     (with-slots (bar left middle entry menubut keymap-top keymap-instant buffer) eli
        (setf bar (make-instance 'gtk-box :orientation :horizontal )
@@ -301,7 +302,7 @@ processing"
 				  :border-width 0
 				  :default-width 640
 				  :default-height 480) )
-	    (eli (make-eli window))
+	    (eli (make-eli window nil))
 	    (workspace (make-instance 'gtk-box :orientation :vertical))
 	    (dummy (make-instance 'gtk-box ))
 	    (bar (eli-bar eli)))
