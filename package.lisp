@@ -8,6 +8,7 @@
 	   ;; eli structure, slots, accessors
 	   :eli-bar :eli-left :eli-middle :eli-entry :eli-right :eli-keymap-top
 	   :eli-keymap-instant :eli-buffer :eli-key :eli-interactive :eli-window
+	   :eli-payload
 	    ;; gtk-emacs-like-input
 	   :make-eli
 	   :reset

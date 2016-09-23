@@ -85,10 +85,12 @@
   (with-slots (buffer keymap-top interactive match) eli
     (setf match (keymap-match keymap-top buffer))
     (typecase match
+      (null (vector-pop buffer) nil)
       (list ;nil or partial list
        (render eli))		
-      (function 
-       (funcall match eli)		;regular binding
+      (function
+       (render eli)
+       (funcall match eli)	;regular binding
        (reset eli))		;done with command
       (symbol			;install interactive
        (funcall
@@ -281,6 +283,7 @@ processing"
 (defun bind-keys (eli)
   (with-slots (keymap-top keymap-instant) eli
     (bind keymap-top  "<C-a>abracadabra<RET>what" #'fun1)
+    (bind keymap-top  "<C-b>" #'fun1)
     (bind keymap-top  "abracadabra<RET>what" #'fun1)
     (bind keymap-top  "<C-a>abracadillo<RET>" #'fun2)
     (bind keymap-top  "<C-a>abracddillo<RET>" #'fun2)
