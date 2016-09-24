@@ -172,6 +172,7 @@ instant and retval"
 	(setf key (make-key gtkkey (gdk-event-key-state event)))
 	;;instant?
 	(multiple-value-bind (instant retval) (dispatch-instant eli)
+	  
 	  (if instant
 	      retval
 	      (if interactive
@@ -231,7 +232,8 @@ instant and retval"
 ;;; Some helper functions that can be bound
 (defun inst-cancel (eli)
   "Cancel command, reset"
-  (reset eli :full t ))
+  (reset eli :full t )
+  t)
 ;;;
 ;;; Tab completion.
 ;;;
