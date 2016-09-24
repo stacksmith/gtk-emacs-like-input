@@ -65,3 +65,13 @@
        do (return (keymap-bval-at map i))
      finally (return nil)))
 
+(defun keymap-match-key (map keyseq key)
+  "check if appending this key results in any matches..."
+  (let ((keyseq-length (length keyseq)))
+    (loop for i from (keymap-high-index map) downto 0
+       for k = (elt (keymap-keyseqs map) i)
+       for mismatch = (mismatch k keyseq)
+       if (and (=  mismatch keyseq-length)
+	       (= key (elt k keyseq-length)))
+       return t end
+       finally (return nil))))

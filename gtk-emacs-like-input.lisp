@@ -56,8 +56,11 @@
 
 (defun buffer-append-key (eli)
   (with-slots (key buffer keymap-top match) eli
-    (vector-push-extend key buffer)) 	        ;;append key to buffer
-  (buffer-process eli))
+    (if (keymap-match-key keymap-top buffer key)
+	(progn (vector-push-extend key buffer)
+	       (buffer-process eli))
+	;; If first character and no possible matches, let gtk have it.
+	(not (zerop (length buffer))))))
 
 (defun buffer-bs (eli)
   (with-slots (buffer keymap-top match) eli
@@ -84,18 +87,18 @@
   "attempt to run a function matching the buffer keyseq."
   (with-slots (buffer keymap-top interactive match) eli
     (setf match (keymap-match keymap-top buffer))
+     ;if no match, backspace buffer???
     (typecase match
-      (null (vector-pop buffer) nil)
-      (list ;nil or partial list
-       (render eli))		
+      (list ;partial list
+       (render eli) t)		
       (function
        (render eli)
        (funcall match eli)	;regular binding
-       (reset eli))		;done with command
+       (reset eli) t)		;done with command
       (symbol			;install interactive
        (funcall
 	(setf interactive (symbol-function match))
-	eli :initialize))
+	eli :initialize) t)
       (t  (format t "ERROR"))))   )
 
 
@@ -252,7 +255,7 @@ processing"
 (defun inst-back-up (eli)
   "instant. BS the last keystroke"
   (with-slots (buffer interactive keymap-top match) eli
-    (format t "int ~A SIZE: ~A~%" interactive (length buffer))
+;    (format t "int ~A SIZE: ~A~%" interactive (length buffer))
     (unless interactive ; on interactive return nil, it will handle
       (unless (zerop (length buffer))
 	(buffer-bs eli))
@@ -292,7 +295,7 @@ processing"
     
 
 
-  
+(defparameter *eli* nil)
        
 (defun test (&key (stdout *standard-output*))
   (let ((gtk::*main-thread* nil))
@@ -309,6 +312,7 @@ processing"
 	    (workspace (make-instance 'gtk-box :orientation :vertical))
 	    (dummy (make-instance 'gtk-box ))
 	    (bar (eli-bar eli)))
+	(setf *eli* eli)
 	(gtk-box-pack-start workspace dummy)
 	(gtk-box-pack-end workspace bar :expand nil)
 	(gtk-container-add window workspace)
