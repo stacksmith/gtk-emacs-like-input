@@ -1,5 +1,4 @@
 ;;;; gtk-emacs-like-input.lisp
-
 (in-package #:gtk-emacs-like-input)
 ;;; The key to using eli is the eli structure.  It contains the entire
 ;;; state of the input system, including the relevant gtk objects.
@@ -51,7 +50,12 @@
 ;;;   to uninstall itself and _immediately_ return t.  Reset re-invokes the
 ;;;   handler with :finalize (from inside the handler!)  You've been warned.
 
-
+#-:lispworks
+(defmacro when-let ((var expr) &body body)
+  "Evaluates EXPR, binds it to VAR, and executes body if var is not nil."
+  `(let ((,var ,expr))
+     (when ,var
+       ,@body)))
 ;;; buffer functions - affect match...
 
 (defun buffer-append-key (eli)
@@ -150,13 +154,12 @@
 
 
 (defun dispatch-instant (eli)
-  "if key is bound as instant, invoke binding.  Otherwise, return nil for further
-processing"
-  ;;TODO: perhaps a separate mechanism is called for instead of creating a damn array every 
-  (with-slots (keymap-instant key) eli
-    (let ((match (keymap-exact-match keymap-instant (vector key))))
-;      (format t "INSTANT MATCH ~A~%" match)
-      (when match (funcall match eli))))) ;if no match, when returns nil, ow whatever!
+  "if key is bound as instant, invoke binding. return two values:
+instant and retval"
+  (with-slots (key keymap-instant) eli
+    (let ((instant (keymap-exact-match keymap-instant (vector key))))
+      (values instant
+	      (when instant (funcall instant eli))))))
 
 
 (defun on-key-press (eli widget event)
@@ -167,11 +170,14 @@ processing"
       ;;(format t "GTKKEY: ~A~%" gtkkey)
       (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
 	(setf key (make-key gtkkey (gdk-event-key-state event)))
-	(unless (dispatch-instant eli)
-	  (if interactive
-	      (funcall interactive eli :process) ;returns nil/t to process keys in gtk
-	      (buffer-append-key eli) ;otherwise, internal dispatch
-	      ))))))
+	;;instant?
+	(multiple-value-bind (instant retval) (dispatch-instant eli)
+	  (if instant
+	      retval
+	      (if interactive
+		  (funcall interactive eli :process) ;returns nil/t to process keys in gtk
+		  (buffer-append-key eli) ;otherwise, internal dispatch
+		  )))))))
 
 
 (defun make-suggest-menu (eli widget)
