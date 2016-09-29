@@ -17,6 +17,7 @@
   window         ;; top window
   match          ;; a list of indices of possible keymap matches, or function
   payload        ;; application context from parent app
+  suspend    ;; just pass the keys to gtk
  
 )
 ;;; Key processing:
@@ -165,14 +166,14 @@ instant and retval"
 (defun on-key-press (eli widget event)
   "Process a key from GTK; ignore modifier keys; process other keys in eli"
   (declare (ignore widget))
-  (with-slots (key interactive) eli
+  (with-slots (key interactive suspend) eli
     (let ((gtkkey (gdk-event-key-keyval event)))
       ;;(format t "GTKKEY: ~A~%" gtkkey)
-      (unless (modifier-p gtkkey ) ;do not process modifiers, gtk will handle them
+      ;; if suspended or modifier key, let gtk handle it
+      (unless (or suspend (modifier-p gtkkey)) 
 	(setf key (make-key gtkkey (gdk-event-key-state event)))
 	;;instant?
 	(multiple-value-bind (instant retval) (dispatch-instant eli)
-	  
 	  (if instant
 	      retval
 	      (if interactive
@@ -199,7 +200,7 @@ instant and retval"
 
 (defun make-eli (window context)
   "Create an eli command bar; return eli"
-  (let ((eli (construct-eli :payload context)))
+  (let ((eli (construct-eli :payload context :suspend nil)))
     
     (with-slots (bar left middle entry menubut keymap-top keymap-instant buffer) eli
        (setf bar (make-instance 'gtk-box :orientation :horizontal )
@@ -228,6 +229,9 @@ instant and retval"
       (eli-signal-connect menubut "clicked" make-suggest-menu (widget))
       (eli-signal-connect window "key-press-event" on-key-press (widget event))
       eli)))
+
+(defun suspend (eli bool)
+  (setf (eli-suspend eli) bool))
 
 ;;; Some helper functions that can be bound
 (defun inst-cancel (eli)
