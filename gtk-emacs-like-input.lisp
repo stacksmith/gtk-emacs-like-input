@@ -269,9 +269,11 @@ instant and retval"
   (with-slots (buffer interactive keymap-top match) eli
 ;    (format t "int ~A SIZE: ~A~%" interactive (length buffer))
     (unless interactive ; on interactive return nil, it will handle
-      (unless (zerop (length buffer))
-	(buffer-bs eli))
-      t)))
+      (if (zerop (length buffer))
+	  nil; keep processing
+	  (progn
+	    (buffer-bs eli) t; and eat the bs
+	    )))))
 (defun app-quit (eli)
   (gtk-widget-destroy (eli-window eli))
   (format t "quit done~%"))
