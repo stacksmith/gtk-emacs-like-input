@@ -1,4 +1,5 @@
 ### GTK-EMACS-LIKE-INPUT
+## STATUS: Somewhat long in the tooth
 
 ## Overview
 
